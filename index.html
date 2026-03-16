@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prompt Engineering Assistant — AI Labs</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Apply saved theme before first paint to prevent flash -->
+    <script>
+      (function() {
+        var t = localStorage.getItem('aidl-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

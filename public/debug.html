@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Debug — Prompt Engineering Assistant</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: system-ui, sans-serif; background: #0a0a1a; color: #e0e8ff; padding: 20px; }
+    h1 { margin-bottom: 20px; font-size: 18px; }
+    h2 { font-size: 14px; margin-bottom: 8px; color: #aef33e; }
+    .panels { display: flex; gap: 20px; }
+    .panel { flex: 1; background: #12122a; border-radius: 8px; padding: 16px; }
+    textarea { width: 100%; height: 80px; background: #1a1a3e; color: #e0e8ff; border: 1px solid #2a2a5e; border-radius: 4px; padding: 8px; font-family: monospace; font-size: 13px; resize: vertical; }
+    button { background: #0009e4; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; margin: 8px 4px 8px 0; }
+    button:hover { background: #0007b5; }
+    .log { background: #0a0a14; border-radius: 4px; padding: 8px; font-family: monospace; font-size: 12px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; margin-top: 8px; }
+    .log-entry { padding: 2px 0; border-bottom: 1px solid #1a1a3e; }
+    .log-entry.error { color: #f56565; }
+    .log-entry.success { color: #aef33e; }
+    input { background: #1a1a3e; color: #e0e8ff; border: 1px solid #2a2a5e; border-radius: 4px; padding: 6px 8px; width: 100%; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Prompt Engineering Assistant — Debug Inspector</h1>
+  <div class="panels">
+    <!-- Left: Orchestrator SSE tester -->
+    <div class="panel">
+      <h2>Orchestrator SSE Test</h2>
+      <textarea id="userMsg" placeholder="Type a message to send to the orchestrator...">I want to optimize this prompt: &quot;Write me a poem about cats&quot;</textarea>
+      <br>
+      <button onclick="sendToOrchestrator()">Send</button>
+      <button onclick="clearLog('orchLog')">Clear Log</button>
+      <div id="orchLog" class="log"></div>
+    </div>
+
+    <!-- Right: Background job tester -->
+    <div class="panel">
+      <h2>Analysis Job Tester</h2>
+      <textarea id="promptText" placeholder="Prompt text to analyze...">Write me a poem about cats</textarea>
+      <br>
+      <input id="jobId" placeholder="Job ID (auto-generated)" />
+      <button onclick="triggerAnalysis()">Trigger Analysis</button>
+      <button onclick="pollStatus()">Poll Status</button>
+      <button onclick="clearLog('jobLog')">Clear Log</button>
+      <div id="jobLog" class="log"></div>
+    </div>
+  </div>
+
+  <script>
+    const messages = [];
+
+    function log(elId, text, cls) {
+      const el = document.getElementById(elId);
+      const div = document.createElement('div');
+      div.className = 'log-entry ' + (cls || '');
+      div.textContent = new Date().toLocaleTimeString() + ' ' + text;
+      el.appendChild(div);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function clearLog(elId) {
+      document.getElementById(elId).innerHTML = '';
+    }
+
+    async function sendToOrchestrator() {
+      const text = document.getElementById('userMsg').value.trim();
+      if (!text) return;
+      messages.push({ role: 'user', content: text });
+      log('orchLog', '→ USER: ' + text);
+
+      try {
+        const res = await fetch('/.netlify/functions/orchestrator', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages }),
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let assistantText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const event = JSON.parse(line.slice(6));
+              if (event.type === 'text_delta') {
+                assistantText += event.text;
+                log('orchLog', '  text_delta: ' + event.text);
+              } else if (event.type === 'analysis_dispatch') {
+                log('orchLog', '  DISPATCH: ' + JSON.stringify(event.submission, null, 2), 'success');
+              } else if (event.type === 'done') {
+                log('orchLog', '  [DONE]', 'success');
+              } else if (event.type === 'error') {
+                log('orchLog', '  ERROR: ' + event.message, 'error');
+              }
+            } catch {}
+          }
+        }
+
+        if (assistantText) {
+          messages.push({ role: 'assistant', content: assistantText });
+        }
+      } catch (err) {
+        log('orchLog', 'FETCH ERROR: ' + err, 'error');
+      }
+    }
+
+    async function triggerAnalysis() {
+      const promptText = document.getElementById('promptText').value.trim();
+      let jobId = document.getElementById('jobId').value.trim();
+      if (!jobId) {
+        jobId = crypto.randomUUID();
+        document.getElementById('jobId').value = jobId;
+      }
+
+      log('jobLog', 'Triggering analysis job: ' + jobId);
+
+      try {
+        const res = await fetch('/.netlify/functions/analysis-agent-background', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            submission: { prompt_text: promptText, model_target: 'general', use_case: 'instruction' },
+            jobId,
+          }),
+        });
+        log('jobLog', 'Response: ' + res.status, res.ok ? 'success' : 'error');
+      } catch (err) {
+        log('jobLog', 'ERROR: ' + err, 'error');
+      }
+    }
+
+    async function pollStatus() {
+      const jobId = document.getElementById('jobId').value.trim();
+      if (!jobId) { log('jobLog', 'No job ID', 'error'); return; }
+
+      try {
+        const res = await fetch('/.netlify/functions/report-status?jobId=' + encodeURIComponent(jobId));
+        const data = await res.json();
+        const preview = data.partial ? data.partial.slice(-200) : '';
+        log('jobLog', 'Status: ' + data.status + (preview ? ' | ...' + preview : ''), data.status === 'complete' ? 'success' : '');
+        if (data.report) {
+          log('jobLog', 'REPORT LENGTH: ' + data.report.length + ' chars', 'success');
+        }
+      } catch (err) {
+        log('jobLog', 'POLL ERROR: ' + err, 'error');
+      }
+    }
+  </script>
+</body>
+</html>
