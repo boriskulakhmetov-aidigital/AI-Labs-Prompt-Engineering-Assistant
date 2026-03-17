@@ -1,15 +1,23 @@
 import { GoogleGenAI } from '@google/genai';
 import { ORCHESTRATOR_SYSTEM_PROMPT } from './_shared/orchestratorPrompt.js';
 
-const DISPATCH_ANALYSIS_TOOL = {
-  name: 'dispatch_analysis',
-  description: 'Dispatch the prompt analysis once enough intake information has been collected.',
+const DISPATCH_PIPELINE_TOOL = {
+  name: 'dispatch_pipeline',
+  description: 'Dispatch the prompt engineering pipeline once enough intake information has been collected.',
   parameters: {
     type: 'OBJECT' as const,
     properties: {
+      needs_design: {
+        type: 'BOOLEAN' as const,
+        description: 'true if the user provided a vague idea that needs to be turned into a full prompt, false if they provided a complete prompt',
+      },
       prompt_text: {
         type: 'STRING' as const,
-        description: 'The prompt text to analyze and optimize',
+        description: 'The complete prompt text (when needs_design is false)',
+      },
+      prompt_idea: {
+        type: 'STRING' as const,
+        description: 'The user\'s idea or goal description (when needs_design is true)',
       },
       model_target: {
         type: 'STRING' as const,
@@ -17,22 +25,22 @@ const DISPATCH_ANALYSIS_TOOL = {
       },
       use_case: {
         type: 'STRING' as const,
-        description: 'Use case: creative_writing, code_generation, data_analysis, chat, instruction, or other',
+        description: 'Use case: creative_writing, code_generation, data_analysis, chat, instruction, reasoning, summarization, extraction, or other',
       },
       desired_output: {
         type: 'STRING' as const,
-        description: 'What the user wants the prompt to achieve',
+        description: 'What the user wants the prompt to produce',
       },
       constraints: {
         type: 'STRING' as const,
-        description: 'Any constraints or requirements',
+        description: 'Any constraints or requirements (tone, length, format, audience)',
       },
       additional_context: {
         type: 'STRING' as const,
-        description: 'Additional context for the analysis',
+        description: 'Additional context for prompt engineering',
       },
     },
-    required: ['prompt_text'],
+    required: ['needs_design'],
   },
 };
 
@@ -74,7 +82,7 @@ export default async (req: Request) => {
           contents,
           config: {
             systemInstruction: ORCHESTRATOR_SYSTEM_PROMPT,
-            tools: [{ functionDeclarations: [DISPATCH_ANALYSIS_TOOL] }],
+            tools: [{ functionDeclarations: [DISPATCH_PIPELINE_TOOL] }],
             maxOutputTokens: 2048,
           },
         });
@@ -86,8 +94,8 @@ export default async (req: Request) => {
           const fcs = chunk.functionCalls;
           if (fcs && fcs.length > 0) {
             for (const fc of fcs) {
-              if (fc.name === 'dispatch_analysis') {
-                emit({ type: 'analysis_dispatch', submission: fc.args });
+              if (fc.name === 'dispatch_pipeline') {
+                emit({ type: 'pipeline_dispatch', submission: fc.args });
               }
             }
           }

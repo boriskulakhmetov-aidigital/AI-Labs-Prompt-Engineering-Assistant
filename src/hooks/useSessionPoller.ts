@@ -1,11 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import type { PipelineStatus } from '../lib/types';
 
-interface PollResult {
-  status: 'idle' | 'pending' | 'streaming' | 'complete' | 'error';
-  partial?: string;
-  report?: string;
-  error?: string;
-}
+type PollResult = PipelineStatus & { status: PipelineStatus['status'] | 'idle' };
 
 export function useSessionPoller(jobId: string | null): PollResult {
   const [result, setResult] = useState<PollResult>({ status: 'idle' });
@@ -34,7 +30,7 @@ export function useSessionPoller(jobId: string | null): PollResult {
     };
 
     poll();
-    intervalRef.current = setInterval(poll, 1000);
+    intervalRef.current = setInterval(poll, 1500);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

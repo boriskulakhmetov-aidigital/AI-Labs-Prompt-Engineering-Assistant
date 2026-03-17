@@ -1,5 +1,5 @@
 import { getStore } from '@netlify/blobs';
-import type { AnalysisJobStatus } from './_shared/types.js';
+import type { PipelineJobStatus } from './_shared/types.js';
 
 export default async (req: Request) => {
   const url = new URL(req.url);
@@ -13,7 +13,7 @@ export default async (req: Request) => {
     const store = getStore('analysis-reports');
     const value = await store.get(jobId);
 
-    const status: AnalysisJobStatus = value
+    const status: PipelineJobStatus = value
       ? JSON.parse(value)
       : { status: 'pending' };
 

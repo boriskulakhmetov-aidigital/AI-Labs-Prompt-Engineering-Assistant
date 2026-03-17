@@ -80,14 +80,14 @@ function AuthenticatedApp() {
       .catch(() => setUserStatus('active'));
   }, []);
 
-  async function handleAnalysisDispatch(sub: PromptSubmission, sessionId: string, messages: ChatMessage[]) {
+  async function handlePipelineDispatch(sub: PromptSubmission, sessionId: string, messages: ChatMessage[]) {
     setSubmission(sub);
     setJobId(sessionId);
     setPastReport(null);
-    setPhase('analysis_running');
+    setPhase('pipeline_running');
     setSidebarRefreshKey(k => k + 1);
 
-    await fetch('/.netlify/functions/analysis-agent-background', {
+    await fetch('/.netlify/functions/pipeline-runner-background', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -100,16 +100,16 @@ function AuthenticatedApp() {
   }
 
   const { messages, streaming, error: chatError, sendMessage, reset: resetOrchestrator } =
-    useOrchestrator(handleAnalysisDispatch, authFetch);
+    useOrchestrator(handlePipelineDispatch, authFetch);
 
-  const pollResult = useSessionPoller(phase === 'analysis_running' ? jobId : null);
+  const pollResult = useSessionPoller(phase === 'pipeline_running' ? jobId : null);
 
   useEffect(() => {
-    if (pollResult.status === 'complete' && phase === 'analysis_running') {
+    if (pollResult.status === 'complete' && phase === 'pipeline_running') {
       setPhase('report_ready');
       setSidebarRefreshKey(k => k + 1);
       setSessionCount(c => c + 1);
-    } else if (pollResult.status === 'error' && phase === 'analysis_running') {
+    } else if (pollResult.status === 'error' && phase === 'pipeline_running') {
       setPhase('error');
     }
   }, [pollResult.status, phase]);
@@ -147,7 +147,7 @@ function AuthenticatedApp() {
         setPastReport(session.report);
         setPhase('report_ready');
       } else if (session.status === 'pending' || session.status === 'streaming') {
-        setPhase('analysis_running');
+        setPhase('pipeline_running');
       } else {
         setPhase('chat');
       }
@@ -171,7 +171,7 @@ function AuthenticatedApp() {
   const displayReport = phase === 'report_ready'
     ? (pollResult.report ?? pastReport ?? '')
     : '';
-  const displayTitle = submission?.prompt_text?.slice(0, 60) ?? pastTitle ?? 'analysis';
+  const displayTitle = submission?.prompt_text?.slice(0, 60) ?? submission?.prompt_idea?.slice(0, 60) ?? pastTitle ?? 'prompt';
 
   if (userStatus === 'loading') {
     return (
@@ -221,7 +221,7 @@ function AuthenticatedApp() {
       <div className="app-content">
         {trialRemaining !== null && (
           <div className="trial-banner">
-            Trial account — <strong>{trialRemaining}</strong> analysis{trialRemaining !== 1 ? 'es' : ''} remaining
+            Trial account — <strong>{trialRemaining}</strong> session{trialRemaining !== 1 ? 's' : ''} remaining
           </div>
         )}
 
@@ -257,10 +257,12 @@ function AuthenticatedApp() {
                   onSend={handleSend}
                 />
               )}
-              {phase === 'analysis_running' && (
+              {phase === 'pipeline_running' && (
                 <ProgressIndicator
                   promptTitle={displayTitle}
                   partial={pollResult.partial}
+                  pipelineStatus={pollResult.status}
+                  needsDesign={submission?.needs_design}
                 />
               )}
               {phase === 'report_ready' && displayReport && (
@@ -276,7 +278,7 @@ function AuthenticatedApp() {
               {phase === 'error' && (
                 <div className="error-page">
                   <p className="error-page__msg">
-                    {pollResult.error ?? 'Something went wrong with the analysis.'}
+                    {pollResult.error ?? 'Something went wrong with the pipeline.'}
                   </p>
                   <button className="btn-primary" onClick={handleNewSession}>Try Again</button>
                 </div>

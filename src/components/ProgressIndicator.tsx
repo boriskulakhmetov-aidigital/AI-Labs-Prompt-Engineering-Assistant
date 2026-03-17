@@ -1,16 +1,27 @@
 import { useState, useEffect } from 'react';
 
-const STEPS = [
-  'Analyzing prompt structure',
-  'Evaluating clarity and specificity',
-  'Checking model-specific optimization',
-  'Identifying failure modes',
-  'Generating optimized version',
-  'Compiling final report',
+const PIPELINE_STEPS = [
+  { key: 'pending', label: 'Initializing pipeline' },
+  { key: 'designing', label: 'Designing prompt from idea' },
+  { key: 'testing', label: 'Running 3 parallel test executions' },
+  { key: 'engineering', label: 'Analyzing results & engineering improvements' },
 ];
-const STEP_THRESHOLDS = [5, 15, 30, 45, 60, 80];
 
-export function ProgressIndicator({ promptTitle, partial }: { promptTitle?: string; partial?: string }) {
+// For Route A (no design needed), skip the design step
+const DIRECT_STEPS = [
+  { key: 'pending', label: 'Initializing pipeline' },
+  { key: 'testing', label: 'Running 3 parallel test executions' },
+  { key: 'engineering', label: 'Analyzing results & engineering improvements' },
+];
+
+interface Props {
+  promptTitle?: string;
+  partial?: string;
+  pipelineStatus?: string;
+  needsDesign?: boolean;
+}
+
+export function ProgressIndicator({ promptTitle, partial, pipelineStatus, needsDesign }: Props) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -18,28 +29,31 @@ export function ProgressIndicator({ promptTitle, partial }: { promptTitle?: stri
     return () => clearInterval(t);
   }, []);
 
-  const doneCount = STEP_THRESHOLDS.filter(t => elapsed >= t).length;
+  const steps = needsDesign ? PIPELINE_STEPS : DIRECT_STEPS;
+  const currentIdx = steps.findIndex(s => s.key === pipelineStatus);
 
   return (
     <div className="progress">
       <div className="progress__header">
         <div className="progress__spinner" />
         <div className="progress__title-group">
-          <h2 className="progress__title">Analyzing Prompt...</h2>
+          <h2 className="progress__title">Engineering Your Prompt...</h2>
           <p className="progress__sub">
-            Running comprehensive analysis{promptTitle ? ` on "${promptTitle}"` : ''}.
+            {promptTitle ? `Working on "${promptTitle}"` : 'Processing your prompt'}.
             {elapsed > 30 && <> This typically takes 1-2 minutes.</>}
           </p>
         </div>
       </div>
       <div className="visualizing-steps">
-        {STEPS.map((label, i) => {
-          const icon = i < doneCount ? '✓' : i === doneCount ? '●' : '○';
-          const cls = i < doneCount ? 'viz-step--done' : i === doneCount ? 'viz-step--pulse' : 'viz-step--pending';
+        {steps.map((step, i) => {
+          const isDone = i < currentIdx;
+          const isCurrent = i === currentIdx;
+          const icon = isDone ? '✓' : isCurrent ? '●' : '○';
+          const cls = isDone ? 'viz-step--done' : isCurrent ? 'viz-step--pulse' : 'viz-step--pending';
           return (
-            <div key={i} className={`viz-step ${cls}`}>
+            <div key={step.key} className={`viz-step ${cls}`}>
               <span className="viz-step__icon">{icon}</span>
-              <span className="viz-step__label">{label}</span>
+              <span className="viz-step__label">{step.label}</span>
             </div>
           );
         })}

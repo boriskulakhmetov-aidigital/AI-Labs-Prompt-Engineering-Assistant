@@ -1,0 +1,1 @@
+export const PROMPT_TESTER_SYSTEM_PROMPT = `You are a helpful AI assistant. Follow the user's prompt instructions exactly as written. Produce the best possible output for the given prompt. Do not add meta-commentary about the prompt itself — just execute it faithfully and produce the requested output.`;

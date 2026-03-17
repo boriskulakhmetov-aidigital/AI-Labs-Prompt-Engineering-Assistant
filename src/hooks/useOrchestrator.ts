@@ -51,11 +51,13 @@ export function useOrchestrator(onDispatch: DispatchFn, authFetch: AuthFetch) {
             }
             return [...prev, { id: asstId, role: 'assistant', content: assistantText }];
           });
-        } else if (event.type === 'analysis_dispatch') {
+        } else if (event.type === 'pipeline_dispatch') {
           const submission = event.submission as unknown as PromptSubmission;
           const sid = sessionIdRef.current;
           const allMsgs = [...next];
           if (assistantText) allMsgs.push({ id: asstId, role: 'assistant', content: assistantText });
+
+          const title = (submission.prompt_text ?? submission.prompt_idea ?? '').slice(0, 60) || 'Untitled';
 
           authFetch('/.netlify/functions/save-session', {
             method: 'POST',
@@ -64,7 +66,7 @@ export function useOrchestrator(onDispatch: DispatchFn, authFetch: AuthFetch) {
               action: 'update_submission',
               id: sid,
               submission,
-              promptTitle: (submission.prompt_text ?? '').slice(0, 60) || 'Untitled',
+              promptTitle: title,
               messages: allMsgs.map(m => ({ role: m.role, content: m.content })),
             }),
           }).catch(console.warn);
