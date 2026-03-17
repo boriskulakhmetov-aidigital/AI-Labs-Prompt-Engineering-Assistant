@@ -10,6 +10,7 @@ import { ChatPanel } from './components/ChatPanel';
 import { ProgressIndicator } from './components/ProgressIndicator';
 import { ReportViewer } from './components/ReportViewer';
 import { DownloadBar } from './components/DownloadBar';
+import { RefinementInput } from './components/RefinementInput';
 import { SessionSidebar } from './components/SessionSidebar';
 import { AdminPanel } from './components/AdminPanel';
 
@@ -61,6 +62,9 @@ function AuthenticatedApp() {
   const [pastReport, setPastReport]       = useState<string | null>(null);
   const [pastTitle, setPastTitle]         = useState<string>('');
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
+  const [iteration, setIteration]         = useState(1);
+  const [engineeredPrompt, setEngineeredPrompt] = useState<string | null>(null);
+  const [isRefinement, setIsRefinement]   = useState(false);
 
   async function authFetch(url: string, options: RequestInit = {}) {
     const token = await getToken();
@@ -85,16 +89,56 @@ function AuthenticatedApp() {
     setJobId(sessionId);
     setPastReport(null);
     setPhase('pipeline_running');
+    setIteration(1);
+    setIsRefinement(false);
+    setEngineeredPrompt(null);
     setSidebarRefreshKey(k => k + 1);
 
     await fetch('/.netlify/functions/pipeline-runner-background', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        submission: sub,
+        submission: { ...sub, iteration: 1 },
         jobId: sessionId,
         userId: userId ?? undefined,
         messages: messages.map(m => ({ role: m.role, content: m.content })),
+      }),
+    });
+  }
+
+  async function handleRefinement(refinementRequest: string) {
+    if (!submission || !jobId) return;
+
+    // Use the engineered prompt from the poll result, or fallback to submission prompt
+    const basePrompt = engineeredPrompt
+      || submission.prompt_text
+      || submission.prompt_idea
+      || '';
+
+    const newIteration = iteration + 1;
+    const refinementSub: PromptSubmission = {
+      ...submission,
+      needs_design: false,
+      refinement_request: refinementRequest,
+      base_prompt: basePrompt,
+      iteration: newIteration,
+    };
+
+    setSubmission(refinementSub);
+    setPastReport(null);
+    setPhase('pipeline_running');
+    setIteration(newIteration);
+    setIsRefinement(true);
+    setEngineeredPrompt(null);
+
+    // Use the same jobId — pipeline will overwrite blob status
+    await fetch('/.netlify/functions/pipeline-runner-background', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submission: refinementSub,
+        jobId,
+        userId: userId ?? undefined,
       }),
     });
   }
@@ -108,7 +152,10 @@ function AuthenticatedApp() {
     if (pollResult.status === 'complete' && phase === 'pipeline_running') {
       setPhase('report_ready');
       setSidebarRefreshKey(k => k + 1);
-      setSessionCount(c => c + 1);
+      if (iteration === 1) setSessionCount(c => c + 1);
+      if (pollResult.engineeredPrompt) {
+        setEngineeredPrompt(pollResult.engineeredPrompt);
+      }
     } else if (pollResult.status === 'error' && phase === 'pipeline_running') {
       setPhase('error');
     }
@@ -120,6 +167,9 @@ function AuthenticatedApp() {
     setSubmission(null);
     setPastReport(null);
     setPastTitle('');
+    setIteration(1);
+    setIsRefinement(false);
+    setEngineeredPrompt(null);
     resetOrchestrator();
   }
 
@@ -142,6 +192,9 @@ function AuthenticatedApp() {
       setJobId(session.id);
       setSubmission(session.submission ?? null);
       setPastTitle(session.prompt_title ?? '');
+      setIteration(session.submission?.iteration ?? 1);
+      setIsRefinement(false);
+      setEngineeredPrompt(null);
 
       if (session.status === 'complete' && session.report) {
         setPastReport(session.report);
@@ -263,6 +316,8 @@ function AuthenticatedApp() {
                   partial={pollResult.partial}
                   pipelineStatus={pollResult.status}
                   needsDesign={submission?.needs_design}
+                  isRefinement={isRefinement}
+                  iteration={iteration}
                 />
               )}
               {phase === 'report_ready' && displayReport && (
@@ -273,6 +328,10 @@ function AuthenticatedApp() {
                     onNewSession={handleNewSession}
                   />
                   <ReportViewer reportText={displayReport} />
+                  <RefinementInput
+                    onSubmit={handleRefinement}
+                    iteration={iteration}
+                  />
                 </div>
               )}
               {phase === 'error' && (

@@ -1551,3 +1551,48 @@ body {
 .viz-step--pending { color: var(--text-muted); background: var(--surface); }
 .viz-step__icon { font-size: 0.9rem; min-width: 16px; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* ── Refinement Input ──────────────────────────────── */
+.refinement-input {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding: 16px 24px;
+  background: var(--surface);
+}
+.refinement-input__label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.refinement-input__row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.refinement-input__textarea {
+  flex: 1;
+  font: inherit;
+  font-size: 0.88rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  resize: vertical;
+  min-height: 44px;
+  max-height: 120px;
+  transition: border-color 0.15s;
+}
+.refinement-input__textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.refinement-input__textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+.refinement-input__btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 10px 20px;
+}

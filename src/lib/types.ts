@@ -15,14 +15,19 @@ export interface PromptSubmission {
   desired_output?: string;
   constraints?: string;
   additional_context?: string;
+  refinement_request?: string;
+  base_prompt?: string;
+  iteration?: number;
 }
 
 export interface PipelineStatus {
-  status: 'pending' | 'designing' | 'testing' | 'engineering' | 'complete' | 'error';
+  status: 'pending' | 'revising' | 'designing' | 'testing' | 'engineering' | 'complete' | 'error';
   stage?: string;
   designedPrompt?: string;
   testResults?: string[];
   report?: string;
+  engineeredPrompt?: string;
   partial?: string;
   error?: string;
+  iteration?: number;
 }

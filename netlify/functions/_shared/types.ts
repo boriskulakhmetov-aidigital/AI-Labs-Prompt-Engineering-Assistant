@@ -7,6 +7,10 @@ export interface PromptSubmission {
   desired_output?: string;       // what the user wants the prompt to achieve
   constraints?: string;          // any constraints or requirements
   additional_context?: string;
+  // Refinement mode fields
+  refinement_request?: string;   // user's change request for the prompt
+  base_prompt?: string;          // the engineered prompt to refine
+  iteration?: number;            // which iteration this is (1 = first run, 2+ = refinement)
 }
 
 export interface PipelineJobRequest {
@@ -17,13 +21,15 @@ export interface PipelineJobRequest {
 }
 
 export interface PipelineJobStatus {
-  status: 'pending' | 'designing' | 'testing' | 'engineering' | 'complete' | 'error';
+  status: 'pending' | 'revising' | 'designing' | 'testing' | 'engineering' | 'complete' | 'error';
   stage?: string;                // human-readable stage label
   designedPrompt?: string;       // output of PromptDesign (or original prompt)
   testResults?: string[];        // 3 test run outputs
   report?: string;               // final PromptEngineer report
+  engineeredPrompt?: string;     // extracted re-engineered prompt for refinement
   partial?: string;              // streaming partial for current stage
   error?: string;
+  iteration?: number;            // current iteration number
   startedAt?: number;
   completedAt?: number;
   failedAt?: number;
