@@ -188,35 +188,18 @@ ${testResults[2]}
 
 Analyze the prompt's performance across these three test runs and produce your synthesis of proposed changes plus the full re-engineered prompt.`;
 
-    let accumulated = '';
-    let lastFlush = Date.now();
-
-    const engineerStream = await ai.models.generateContentStream({
+    const engineerResult = await ai.models.generateContent({
       model: 'gemini-3.1-pro-preview',
       contents: [{ role: 'user', parts: [{ text: engineerInput }] }],
       config: {
         systemInstruction: PROMPT_ENGINEER_SYSTEM_PROMPT,
         maxOutputTokens: 16384,
-        thinkingConfig: { thinkingLevel: 'high' },
+        thinkingConfig: { thinkingLevel: 'medium' },
       },
     });
 
-    for await (const chunk of engineerStream) {
-      if (chunk.text) {
-        accumulated += chunk.text;
-        if (Date.now() - lastFlush > 2000) {
-          await setStatus({
-            status: 'engineering',
-            stage: 'Engineering improved prompt...',
-            designedPrompt: (isRefinement || submission.needs_design) ? workingPrompt : undefined,
-            testResults,
-            partial: accumulated,
-            startedAt: Date.now(),
-          });
-          lastFlush = Date.now();
-        }
-      }
-    }
+    const accumulated = engineerResult.text?.trim() ?? '';
+    if (!accumulated) throw new Error('PromptEngineer produced empty output');
 
     // ── Extract engineered prompt from the output ─────────────────────────
     const engineeredPrompt = extractEngineeredPrompt(accumulated);
