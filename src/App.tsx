@@ -153,12 +153,11 @@ function AuthenticatedApp() {
 
   useEffect(() => {
     if (pollResult.status === 'complete' && phase === 'pipeline_running') {
+      if (pollResult.report) setPastReport(pollResult.report);
+      if (pollResult.engineeredPrompt) setEngineeredPrompt(pollResult.engineeredPrompt);
       setPhase('report_ready');
       setSidebarRefreshKey(k => k + 1);
       if (iteration === 1) setSessionCount(c => c + 1);
-      if (pollResult.engineeredPrompt) {
-        setEngineeredPrompt(pollResult.engineeredPrompt);
-      }
     } else if (pollResult.status === 'error' && phase === 'pipeline_running') {
       setPipelineError(pollResult.error ?? 'Unknown pipeline error');
       setPhase('error');
