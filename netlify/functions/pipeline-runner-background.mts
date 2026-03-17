@@ -51,6 +51,7 @@ Revise the prompt to incorporate the requested changes.`;
         config: {
           systemInstruction: PROMPT_REVISION_SYSTEM_PROMPT,
           maxOutputTokens: 4096,
+          thinkingConfig: { thinkingLevel: 'medium' },
         },
       });
 
@@ -88,6 +89,7 @@ Design a complete, production-ready prompt based on this idea.`;
         config: {
           systemInstruction: PROMPT_DESIGN_SYSTEM_PROMPT,
           maxOutputTokens: 4096,
+          thinkingConfig: { thinkingLevel: 'medium' },
         },
       });
 
@@ -114,18 +116,18 @@ Design a complete, production-ready prompt based on this idea.`;
       startedAt: Date.now(),
     });
 
-    const testRun = (runId: number) =>
+    const testRun = () =>
       ai.models.generateContent({
         model: 'gemini-3.1-pro-preview',
         contents: [{ role: 'user', parts: [{ text: workingPrompt }] }],
         config: {
           systemInstruction: PROMPT_TESTER_SYSTEM_PROMPT,
           maxOutputTokens: 4096,
-          temperature: 0.9 + (runId * 0.05),
+          thinkingConfig: { thinkingLevel: 'low' },
         },
       });
 
-    const [run1, run2, run3] = await Promise.all([testRun(0), testRun(1), testRun(2)]);
+    const [run1, run2, run3] = await Promise.all([testRun(), testRun(), testRun()]);
 
     const testResults = [
       run1.text?.trim() ?? '[empty output]',
@@ -190,11 +192,12 @@ Analyze the prompt's performance across these three test runs and produce your s
     let lastFlush = Date.now();
 
     const engineerStream = await ai.models.generateContentStream({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.1-pro-preview',
       contents: [{ role: 'user', parts: [{ text: engineerInput }] }],
       config: {
         systemInstruction: PROMPT_ENGINEER_SYSTEM_PROMPT,
         maxOutputTokens: 16384,
+        thinkingConfig: { thinkingLevel: 'high' },
       },
     });
 
