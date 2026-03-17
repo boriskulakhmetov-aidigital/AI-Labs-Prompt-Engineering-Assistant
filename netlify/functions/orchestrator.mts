@@ -78,7 +78,7 @@ export default async (req: Request) => {
 
       try {
         const stream = await ai.models.generateContentStream({
-          model: 'gemini-3.0-flash',
+          model: 'gemini-3-flash-preview',
           contents,
           config: {
             systemInstruction: ORCHESTRATOR_SYSTEM_PROMPT,
