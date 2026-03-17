@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { BrandMark, ThemeToggle, useTheme } from '@boriskulakhmetov-aidigital/design-system';
+import { BrandMark, ThemeToggle, useTheme, ReportViewer } from '@boriskulakhmetov-aidigital/design-system';
 import { SignIn, UserButton, useAuth, useUser } from '@clerk/react';
 import type { AppPhase, PromptSubmission } from './lib/types';
 import { useOrchestrator } from './hooks/useOrchestrator';
 import { useSessionPoller } from './hooks/useSessionPoller';
 import { ChatPanel } from './components/ChatPanel';
 import { ProgressIndicator } from './components/ProgressIndicator';
-import { ReportViewer } from './components/ReportViewer';
 import { DownloadBar } from './components/DownloadBar';
 import { RefinementInput } from './components/RefinementInput';
 import { SessionSidebar } from './components/SessionSidebar';

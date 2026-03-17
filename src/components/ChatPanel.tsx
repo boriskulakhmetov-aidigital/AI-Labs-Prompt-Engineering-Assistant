@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { ChatMessage } from '../lib/types';
-import { MessageBubble } from './MessageBubble';
+import { MessageBubble } from '@boriskulakhmetov-aidigital/design-system';
 
 interface ChatPanelProps {
   messages: ChatMessage[];

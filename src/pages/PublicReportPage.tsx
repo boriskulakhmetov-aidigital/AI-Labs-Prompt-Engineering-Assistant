@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ReportViewer } from '../components/ReportViewer';
-import { BrandMark } from '@boriskulakhmetov-aidigital/design-system';
+import { BrandMark, ReportViewer } from '@boriskulakhmetov-aidigital/design-system';
 
 export function PublicReportPage() {
   const [report, setReport] = useState<string | null>(null);
