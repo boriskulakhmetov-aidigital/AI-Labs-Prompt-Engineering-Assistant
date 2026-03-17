@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { BrandMark, ThemeToggle, useTheme, ReportViewer, ChatPanel, DownloadBar, AdminPanel } from '@boriskulakhmetov-aidigital/design-system';
-import { SignIn, UserButton, useAuth, useUser } from '@clerk/react';
+import { useState, useEffect, useCallback } from 'react';
+import { AppShell, ChatPanel, ReportViewer, DownloadBar } from '@boriskulakhmetov-aidigital/design-system';
+import type { AppShellContext } from '@boriskulakhmetov-aidigital/design-system';
+import { SignIn, UserButton, useAuth } from '@clerk/react';
 import type { AppPhase, PromptSubmission } from './lib/types';
 import { useOrchestrator } from './hooks/useOrchestrator';
 import { useSessionPoller } from './hooks/useSessionPoller';
@@ -8,51 +9,34 @@ import { ProgressIndicator } from './components/ProgressIndicator';
 import { RefinementInput } from './components/RefinementInput';
 import { SessionSidebar } from './components/SessionSidebar';
 
-export default function App() {
-  const { isLoaded, isSignedIn } = useAuth();
-
-  if (!isLoaded) {
-    return (
-      <div className="auth-gate">
-        <div className="auth-gate__brand">
-          <BrandMark size={28} />
-          AI Labs — Prompt Engineering Assistant
-        </div>
-      </div>
-    );
-  }
-
-  if (!isSignedIn) {
-    return (
-      <div className="auth-gate">
-        <div className="auth-gate__brand">
-          <BrandMark size={28} />
-          AI Labs — Prompt Engineering Assistant
-        </div>
-        <SignIn routing="hash" />
-      </div>
-    );
-  }
-
-  return <AuthenticatedApp />;
-}
-
-type UserStatus = 'loading' | 'active' | 'admin' | 'trial' | 'pending' | 'blocked';
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
-function AuthenticatedApp() {
-  const { getToken, userId } = useAuth();
-  const { user } = useUser();
-  const email = user?.primaryEmailAddress?.emailAddress ?? null;
-  const { theme, toggle: toggleTheme } = useTheme();
+export default function App() {
+  return (
+    <AppShellInner />
+  );
+}
 
-  const [userStatus, setUserStatus]       = useState<UserStatus>('loading');
-  const [sessionCount, setSessionCount]   = useState(0);
+/**
+ * Inner component that can safely call useAuth() for the sidebar's authFetch,
+ * while AppShell handles auth gating, status pages, header, trial banner, and admin.
+ */
+function AppShellInner() {
+  const { getToken, userId } = useAuth();
+
+  // Local authFetch for the sidebar (identical to the one AppShell provides)
+  const sidebarAuthFetch = useCallback(async (url: string, options: RequestInit = {}) => {
+    const token = await getToken();
+    return fetch(url, {
+      ...options,
+      headers: { ...(options.headers ?? {}), Authorization: 'Bearer ' + token },
+    });
+  }, [getToken]);
+
   const [phase, setPhase]                 = useState<AppPhase>('chat');
   const [jobId, setJobId]                 = useState<string | null>(null);
   const [submission, setSubmission]       = useState<PromptSubmission | null>(null);
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
-  const [showAdmin, setShowAdmin]         = useState(false);
   const [pastReport, setPastReport]       = useState<string | null>(null);
   const [pastTitle, setPastTitle]         = useState<string>('');
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
@@ -60,24 +44,6 @@ function AuthenticatedApp() {
   const [engineeredPrompt, setEngineeredPrompt] = useState<string | null>(null);
   const [isRefinement, setIsRefinement]   = useState(false);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
-
-  async function authFetch(url: string, options: RequestInit = {}) {
-    const token = await getToken();
-    return fetch(url, {
-      ...options,
-      headers: { ...(options.headers ?? {}), Authorization: 'Bearer ' + token },
-    });
-  }
-
-  useEffect(() => {
-    authFetch('/.netlify/functions/init-user')
-      .then(r => r.json())
-      .then(data => {
-        setUserStatus(data.status ?? 'active');
-        setSessionCount(data.audit_count ?? 0);
-      })
-      .catch(() => setUserStatus('active'));
-  }, []);
 
   async function handlePipelineDispatch(sub: PromptSubmission, sessionId: string, messages: ChatMessage[]) {
     setSubmission(sub);
@@ -104,7 +70,6 @@ function AuthenticatedApp() {
   async function handleRefinement(refinementRequest: string) {
     if (!submission || !jobId) return;
 
-    // Use the engineered prompt from the poll result, or fallback to submission prompt
     const basePrompt = engineeredPrompt
       || submission.prompt_text
       || submission.prompt_idea
@@ -119,7 +84,6 @@ function AuthenticatedApp() {
       iteration: newIteration,
     };
 
-    // New jobId so the poller doesn't see the old 'complete' status
     const newJobId = crypto.randomUUID();
 
     setSubmission(refinementSub);
@@ -144,7 +108,7 @@ function AuthenticatedApp() {
   const refreshSidebar = () => setSidebarRefreshKey(k => k + 1);
 
   const { messages, streaming, error: chatError, sendMessage, reset: resetOrchestrator } =
-    useOrchestrator(handlePipelineDispatch, authFetch, refreshSidebar);
+    useOrchestrator(handlePipelineDispatch, sidebarAuthFetch, refreshSidebar);
 
   const pollResult = useSessionPoller(phase === 'pipeline_running' ? jobId : null);
 
@@ -154,7 +118,6 @@ function AuthenticatedApp() {
       if (pollResult.engineeredPrompt) setEngineeredPrompt(pollResult.engineeredPrompt);
       setPhase('report_ready');
       setSidebarRefreshKey(k => k + 1);
-      if (iteration === 1) setSessionCount(c => c + 1);
     } else if (pollResult.status === 'error' && phase === 'pipeline_running') {
       setPipelineError(pollResult.error ?? 'Unknown pipeline error');
       setPhase('error');
@@ -181,10 +144,7 @@ function AuthenticatedApp() {
   async function handleLoadSession(id: string) {
     setLoadingSessionId(id);
     try {
-      const token = await getToken();
-      const res = await fetch('/.netlify/functions/get-session?id=' + encodeURIComponent(id), {
-        headers: { Authorization: 'Bearer ' + token },
-      });
+      const res = await sidebarAuthFetch('/.netlify/functions/get-session?id=' + encodeURIComponent(id));
       if (!res.ok) return;
       const data = await res.json();
       const session = data.session;
@@ -213,7 +173,7 @@ function AuthenticatedApp() {
   }
 
   async function handleDeleteSession(id: string) {
-    authFetch('/.netlify/functions/save-session', {
+    sidebarAuthFetch('/.netlify/functions/save-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'delete', id }),
@@ -227,135 +187,77 @@ function AuthenticatedApp() {
     : '';
   const displayTitle = submission?.prompt_text?.slice(0, 60) ?? submission?.prompt_idea?.slice(0, 60) ?? pastTitle ?? 'prompt';
 
-  if (userStatus === 'loading') {
-    return (
-      <div className="auth-gate">
-        <div className="auth-gate__brand">
-          <BrandMark size={28} />
-          AI Labs — Prompt Engineering Assistant
-        </div>
-      </div>
-    );
-  }
-  if (userStatus === 'pending') {
-    return (
-      <div className="status-page">
-        <div className="status-page__icon">&#x23F3;</div>
-        <h2>Access Pending Approval</h2>
-        <p>Your account is awaiting administrator approval. You'll receive access shortly.</p>
-        <p className="status-page__contact">Questions? Contact <a href="mailto:support@aidigital.com">support@aidigital.com</a></p>
-      </div>
-    );
-  }
-  if (userStatus === 'blocked') {
-    return (
-      <div className="status-page">
-        <div className="status-page__icon">&#x1F6AB;</div>
-        <h2>Account Suspended</h2>
-        <p>Your account partnership has been suspended.</p>
-        <p className="status-page__contact">Please contact <a href="mailto:support@aidigital.com">AIDigital Customer Support</a></p>
-      </div>
-    );
-  }
-
-  const trialRemaining = userStatus === 'trial' ? Math.max(0, 10 - sessionCount) : null;
-
   return (
-    <div className="app-layout">
-      <SessionSidebar
-        refreshKey={sidebarRefreshKey}
-        currentJobId={jobId}
-        loadingSessionId={loadingSessionId}
-        onSelectSession={handleLoadSession}
-        onNewSession={handleNewSession}
-        onDeleteSession={handleDeleteSession}
-        authFetch={authFetch}
-      />
-
-      <div className="app-content">
-        {trialRemaining !== null && (
-          <div className="trial-banner">
-            Trial account — <strong>{trialRemaining}</strong> session{trialRemaining !== 1 ? 's' : ''} remaining
-          </div>
-        )}
-
-        <header className="app-header">
-          <div className="app-header__left">
-            <div className="app-header__logo">
-              <BrandMark size={20} />
-              AI Labs
-            </div>
-            <span className="app-header__title">Prompt Engineering Assistant</span>
-          </div>
-          <div className="app-header__right">
-            {userStatus === 'admin' && (
-              <button className="btn-ghost btn-sm" onClick={() => setShowAdmin(!showAdmin)}>
-                {showAdmin ? 'Close Admin' : 'Admin Console'}
-              </button>
-            )}
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
-            <UserButton />
-          </div>
-        </header>
-
-        <main className="app-main">
-          {showAdmin ? (
-            <AdminPanel authFetch={authFetch} activityLabel="Session" detailEndpoint="get-session" />
-          ) : (
-            <>
-              {phase === 'chat' && (
-                <ChatPanel
-                  messages={messages}
-                  streaming={streaming}
-                  error={chatError}
-                  onSend={handleSend}
-                  welcomeTitle="Prompt Engineering Assistant"
-                  welcomeDescription="Paste a prompt to optimize, or describe what you need — I'll build it from scratch. Your prompt will be tested 3 times and re-engineered for consistency and quality."
-                  hints={[
-                    'I need a prompt that summarizes meeting notes into action items',
-                    'Optimize this prompt for me: You are a helpful assistant. Help me write better code.',
-                  ]}
-                  placeholder="Paste your prompt here, or describe what you need..."
-                />
-              )}
-              {phase === 'pipeline_running' && (
-                <ProgressIndicator
-                  promptTitle={displayTitle}
-                  partial={pollResult.partial}
-                  pipelineStatus={pollResult.status}
-                  needsDesign={submission?.needs_design}
-                  isRefinement={isRefinement}
-                  iteration={iteration}
-                />
-              )}
-              {phase === 'report_ready' && displayReport && (
-                <div className="report-page">
-                  <DownloadBar
-                    reportText={displayReport}
-                    title={displayTitle}
-                  />
-                  <button className="btn-primary btn-sm" onClick={handleNewSession}>
-                    New Analysis
-                  </button>
-                  <ReportViewer reportText={displayReport} />
-                  <RefinementInput
-                    onSubmit={handleRefinement}
-                    iteration={iteration}
-                  />
-                </div>
-              )}
-              {phase === 'error' && (
-                <div className="error-page">
-                  <p className="error-page__msg">
-                    {pipelineError ?? 'Something went wrong with the pipeline.'}
-                  </p>
-                  <button className="btn-primary" onClick={handleNewSession}>Try Again</button>
-                </div>
-              )}
-            </>
+    <AppShell
+      appTitle="Prompt Engineering"
+      activityLabel="Session"
+      detailEndpoint="get-session"
+      auth={{ SignIn, UserButton, useAuth }}
+      sidebar={
+        <SessionSidebar
+          refreshKey={sidebarRefreshKey}
+          currentJobId={jobId}
+          loadingSessionId={loadingSessionId}
+          onSelectSession={handleLoadSession}
+          onNewSession={handleNewSession}
+          onDeleteSession={handleDeleteSession}
+          authFetch={sidebarAuthFetch}
+        />
+      }
+    >
+      {({ authFetch }: AppShellContext) => (
+        <>
+          {phase === 'chat' && (
+            <ChatPanel
+              messages={messages}
+              streaming={streaming}
+              error={chatError}
+              onSend={handleSend}
+              welcomeTitle="Prompt Engineering Assistant"
+              welcomeDescription="Paste a prompt to optimize, or describe what you need — I'll build it from scratch. Your prompt will be tested 3 times and re-engineered for consistency and quality."
+              hints={[
+                'I need a prompt that summarizes meeting notes into action items',
+                'Optimize this prompt for me: You are a helpful assistant. Help me write better code.',
+              ]}
+              placeholder="Paste your prompt here, or describe what you need..."
+            />
           )}
-        </main>
-      </div>
-    </div>
+          {phase === 'pipeline_running' && (
+            <ProgressIndicator
+              promptTitle={displayTitle}
+              partial={pollResult.partial}
+              pipelineStatus={pollResult.status}
+              needsDesign={submission?.needs_design}
+              isRefinement={isRefinement}
+              iteration={iteration}
+            />
+          )}
+          {phase === 'report_ready' && displayReport && (
+            <div className="report-page">
+              <DownloadBar
+                reportText={displayReport}
+                title={displayTitle}
+              />
+              <button className="btn-primary btn-sm" onClick={handleNewSession}>
+                New Analysis
+              </button>
+              <ReportViewer reportText={displayReport} />
+              <RefinementInput
+                onSubmit={handleRefinement}
+                iteration={iteration}
+              />
+            </div>
+          )}
+          {phase === 'error' && (
+            <div className="error-page">
+              <p className="error-page__msg">
+                {pipelineError ?? 'Something went wrong with the pipeline.'}
+              </p>
+              <button className="btn-primary" onClick={handleNewSession}>Try Again</button>
+            </div>
+          )}
+        </>
+      )}
+    </AppShell>
   );
 }
