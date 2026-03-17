@@ -118,7 +118,7 @@ Design a complete, production-ready prompt based on this idea.`;
     });
 
     const inputGenResult = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: [{ role: 'user', parts: [{ text: `Here is the prompt that needs test input:\n\n\`\`\`\n${workingPrompt}\n\`\`\`\n\nGenerate a realistic, representative sample input for this prompt.` }] }],
       config: {
         systemInstruction: TEST_INPUT_GENERATOR_PROMPT,
@@ -140,7 +140,7 @@ Design a complete, production-ready prompt based on this idea.`;
     // Build the test message: prompt as system instruction, test input as user message
     const testRun = () =>
       ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: [{ role: 'user', parts: [{ text: testInput }] }],
         config: {
           systemInstruction: workingPrompt,
