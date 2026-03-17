@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react';
-import { BrandMark, ThemeToggle, useTheme, ReportViewer } from '@boriskulakhmetov-aidigital/design-system';
+import { BrandMark, ThemeToggle, useTheme, ReportViewer, ChatPanel, DownloadBar, AdminPanel } from '@boriskulakhmetov-aidigital/design-system';
 import { SignIn, UserButton, useAuth, useUser } from '@clerk/react';
 import type { AppPhase, PromptSubmission } from './lib/types';
 import { useOrchestrator } from './hooks/useOrchestrator';
 import { useSessionPoller } from './hooks/useSessionPoller';
-import { ChatPanel } from './components/ChatPanel';
 import { ProgressIndicator } from './components/ProgressIndicator';
-import { DownloadBar } from './components/DownloadBar';
 import { RefinementInput } from './components/RefinementInput';
 import { SessionSidebar } from './components/SessionSidebar';
-import { AdminPanel } from './components/AdminPanel';
 
 export default function App() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -177,7 +174,7 @@ function AuthenticatedApp() {
     resetOrchestrator();
   }
 
-  function handleSend(text: string) {
+  function handleSend(text: string, _asset: unknown) {
     sendMessage(text);
   }
 
@@ -303,7 +300,7 @@ function AuthenticatedApp() {
 
         <main className="app-main">
           {showAdmin ? (
-            <AdminPanel authFetch={authFetch} />
+            <AdminPanel authFetch={authFetch} activityLabel="Session" detailEndpoint="get-session" />
           ) : (
             <>
               {phase === 'chat' && (
@@ -312,6 +309,13 @@ function AuthenticatedApp() {
                   streaming={streaming}
                   error={chatError}
                   onSend={handleSend}
+                  welcomeTitle="Prompt Engineering Assistant"
+                  welcomeDescription="Paste a prompt to optimize, or describe what you need — I'll build it from scratch. Your prompt will be tested 3 times and re-engineered for consistency and quality."
+                  hints={[
+                    'I need a prompt that summarizes meeting notes into action items',
+                    'Optimize this prompt for me: You are a helpful assistant. Help me write better code.',
+                  ]}
+                  placeholder="Paste your prompt here, or describe what you need..."
                 />
               )}
               {phase === 'pipeline_running' && (
@@ -328,9 +332,11 @@ function AuthenticatedApp() {
                 <div className="report-page">
                   <DownloadBar
                     reportText={displayReport}
-                    promptTitle={displayTitle}
-                    onNewSession={handleNewSession}
+                    title={displayTitle}
                   />
+                  <button className="btn-primary btn-sm" onClick={handleNewSession}>
+                    New Analysis
+                  </button>
                   <ReportViewer reportText={displayReport} />
                   <RefinementInput
                     onSubmit={handleRefinement}
