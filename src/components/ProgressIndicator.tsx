@@ -3,20 +3,20 @@ import { useState, useEffect } from 'react';
 const DESIGN_STEPS = [
   { key: 'pending', label: 'Initializing pipeline' },
   { key: 'designing', label: 'Designing prompt from idea' },
-  { key: 'testing', label: 'Running 3 parallel test executions' },
+  { key: 'testing', label: 'Generating test input & running 3 parallel executions' },
   { key: 'engineering', label: 'Analyzing results & engineering improvements' },
 ];
 
 const DIRECT_STEPS = [
   { key: 'pending', label: 'Initializing pipeline' },
-  { key: 'testing', label: 'Running 3 parallel test executions' },
+  { key: 'testing', label: 'Generating test input & running 3 parallel executions' },
   { key: 'engineering', label: 'Analyzing results & engineering improvements' },
 ];
 
 const REFINEMENT_STEPS = [
   { key: 'pending', label: 'Initializing pipeline' },
   { key: 'revising', label: 'Revising prompt based on your feedback' },
-  { key: 'testing', label: 'Running 3 parallel test executions' },
+  { key: 'testing', label: 'Generating test input & running 3 parallel executions' },
   { key: 'engineering', label: 'Analyzing results & engineering improvements' },
 ];
 

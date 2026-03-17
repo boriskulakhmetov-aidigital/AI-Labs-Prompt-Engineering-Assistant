@@ -4,6 +4,7 @@ import { getStore } from '@netlify/blobs';
 import { PROMPT_DESIGN_SYSTEM_PROMPT, PROMPT_REVISION_SYSTEM_PROMPT } from './_shared/promptDesignPrompt.js';
 import { PROMPT_TESTER_SYSTEM_PROMPT } from './_shared/promptTesterPrompt.js';
 import { PROMPT_ENGINEER_SYSTEM_PROMPT } from './_shared/promptEngineerPrompt.js';
+import { TEST_INPUT_GENERATOR_PROMPT } from './_shared/testInputPrompt.js';
 import { updateSessionReport, incrementUserSessionCount } from './_shared/db.js';
 import type { PipelineJobRequest, PipelineJobStatus } from './_shared/types.js';
 
@@ -108,20 +109,41 @@ Design a complete, production-ready prompt based on this idea.`;
       if (!workingPrompt) throw new Error('No prompt text provided');
     }
 
-    // ── Stage 2: Prompt Tester — 3 parallel runs ──────────────────────────
+    // ── Stage 2a: Generate realistic test input for the prompt ─────────
     await setStatus({
       status: 'testing',
-      stage: 'Running prompt 3 times in parallel...',
+      stage: 'Generating realistic test input...',
       designedPrompt: (isRefinement || submission.needs_design) ? workingPrompt : undefined,
       startedAt: Date.now(),
     });
 
+    const inputGenResult = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: `Here is the prompt that needs test input:\n\n\`\`\`\n${workingPrompt}\n\`\`\`\n\nGenerate a realistic, representative sample input for this prompt.` }] }],
+      config: {
+        systemInstruction: TEST_INPUT_GENERATOR_PROMPT,
+        maxOutputTokens: 4096,
+      },
+    });
+
+    const testInput = inputGenResult.text?.trim() ?? '';
+    if (!testInput) throw new Error('Test input generator produced empty output');
+
+    // ── Stage 2b: Prompt Tester — 3 parallel runs with same input ────
+    await setStatus({
+      status: 'testing',
+      stage: 'Running prompt 3 times in parallel with test input...',
+      designedPrompt: (isRefinement || submission.needs_design) ? workingPrompt : undefined,
+      startedAt: Date.now(),
+    });
+
+    // Build the test message: prompt as system instruction, test input as user message
     const testRun = () =>
       ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: workingPrompt }] }],
+        contents: [{ role: 'user', parts: [{ text: testInput }] }],
         config: {
-          systemInstruction: PROMPT_TESTER_SYSTEM_PROMPT,
+          systemInstruction: workingPrompt,
           maxOutputTokens: 4096,
         },
       });
@@ -170,6 +192,12 @@ ${workingPrompt}
 - **Desired Output:** ${submission.desired_output ?? 'not specified'}
 - **Constraints:** ${submission.constraints ?? 'none specified'}
 
+## Test Input Used
+The following realistic sample input was generated and fed to all 3 test runs:
+\`\`\`
+${testInput}
+\`\`\`
+
 ## Test Run 1 Output
 \`\`\`
 ${testResults[0]}
@@ -204,7 +232,7 @@ Analyze the prompt's performance across these three test runs and produce your s
     const engineeredPrompt = extractEngineeredPrompt(accumulated);
 
     // ── Complete ──────────────────────────────────────────────────────────
-    const finalReport = buildFinalReport(workingPrompt, isRefinement, submission.needs_design, submission.refinement_request, testResults, accumulated, iteration);
+    const finalReport = buildFinalReport(workingPrompt, isRefinement, submission.needs_design, submission.refinement_request, testInput, testResults, accumulated, iteration);
 
     await setStatus({
       status: 'complete',
@@ -248,6 +276,7 @@ function buildFinalReport(
   isRefinement: boolean,
   wasDesigned: boolean,
   refinementRequest: string | undefined,
+  testInput: string,
   testResults: string[],
   engineerAnalysis: string,
   iteration: number
@@ -266,7 +295,9 @@ function buildFinalReport(
     report += `## Original Prompt\n\n\`\`\`\n${workingPrompt}\n\`\`\`\n\n---\n\n`;
   }
 
-  report += `## Test Run Results\n\nThe prompt was executed 3 times to evaluate consistency and identify issues:\n\n`;
+  report += `## Generated Test Input\n\nA realistic sample input was generated and used for all 3 test runs:\n\n<details>\n<summary><strong>View test input</strong></summary>\n\n${testInput}\n\n</details>\n\n---\n\n`;
+
+  report += `## Test Run Results\n\nThe prompt was executed 3 times with the same test input to evaluate consistency:\n\n`;
   testResults.forEach((result, i) => {
     report += `<details>\n<summary><strong>Test Run ${i + 1}</strong></summary>\n\n${result}\n\n</details>\n\n`;
   });
