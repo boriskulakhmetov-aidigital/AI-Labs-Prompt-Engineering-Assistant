@@ -118,12 +118,11 @@ Design a complete, production-ready prompt based on this idea.`;
 
     const testRun = () =>
       ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: workingPrompt }] }],
         config: {
           systemInstruction: PROMPT_TESTER_SYSTEM_PROMPT,
           maxOutputTokens: 4096,
-          thinkingConfig: { thinkingLevel: 'low' },
         },
       });
 

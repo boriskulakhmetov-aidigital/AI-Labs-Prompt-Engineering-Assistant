@@ -65,6 +65,7 @@ function AuthenticatedApp() {
   const [iteration, setIteration]         = useState(1);
   const [engineeredPrompt, setEngineeredPrompt] = useState<string | null>(null);
   const [isRefinement, setIsRefinement]   = useState(false);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   async function authFetch(url: string, options: RequestInit = {}) {
     const token = await getToken();
@@ -159,6 +160,7 @@ function AuthenticatedApp() {
         setEngineeredPrompt(pollResult.engineeredPrompt);
       }
     } else if (pollResult.status === 'error' && phase === 'pipeline_running') {
+      setPipelineError(pollResult.error ?? 'Unknown pipeline error');
       setPhase('error');
     }
   }, [pollResult.status, phase]);
@@ -172,6 +174,7 @@ function AuthenticatedApp() {
     setIteration(1);
     setIsRefinement(false);
     setEngineeredPrompt(null);
+    setPipelineError(null);
     resetOrchestrator();
   }
 
@@ -339,7 +342,7 @@ function AuthenticatedApp() {
               {phase === 'error' && (
                 <div className="error-page">
                   <p className="error-page__msg">
-                    {pollResult.error ?? 'Something went wrong with the pipeline.'}
+                    {pipelineError ?? 'Something went wrong with the pipeline.'}
                   </p>
                   <button className="btn-primary" onClick={handleNewSession}>Try Again</button>
                 </div>
