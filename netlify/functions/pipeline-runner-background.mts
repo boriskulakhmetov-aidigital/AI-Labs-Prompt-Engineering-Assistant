@@ -46,7 +46,7 @@ ${submission.refinement_request}
 Revise the prompt to incorporate the requested changes.`;
 
       const revisionResult = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-pro',
         contents: [{ role: 'user', parts: [{ text: revisionInput }] }],
         config: {
           systemInstruction: PROMPT_REVISION_SYSTEM_PROMPT,
@@ -83,7 +83,7 @@ ${messages && messages.length > 0 ? `## Conversation Context\n${messages.map(m =
 Design a complete, production-ready prompt based on this idea.`;
 
       const designResult = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-pro',
         contents: [{ role: 'user', parts: [{ text: designInput }] }],
         config: {
           systemInstruction: PROMPT_DESIGN_SYSTEM_PROMPT,
@@ -116,7 +116,7 @@ Design a complete, production-ready prompt based on this idea.`;
 
     const testRun = (runId: number) =>
       ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-pro',
         contents: [{ role: 'user', parts: [{ text: workingPrompt }] }],
         config: {
           systemInstruction: PROMPT_TESTER_SYSTEM_PROMPT,
