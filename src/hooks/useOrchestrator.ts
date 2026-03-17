@@ -5,11 +5,18 @@ import type { ChatMessage, PromptSubmission } from '../lib/types';
 type DispatchFn = (submission: PromptSubmission, sessionId: string, messages: ChatMessage[]) => void;
 type AuthFetch = (url: string, options?: RequestInit) => Promise<Response>;
 
-export function useOrchestrator(onDispatch: DispatchFn, authFetch: AuthFetch) {
+export function useOrchestrator(
+  onDispatch: DispatchFn,
+  authFetch: AuthFetch,
+  onSidebarRefresh?: () => void,
+) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sessionIdRef = useRef<string>(crypto.randomUUID());
+  const sessionCreatedRef = useRef(false);
+
+  const getSessionId = useCallback(() => sessionIdRef.current, []);
 
   const sendMessage = useCallback(async (text: string) => {
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: text };
@@ -19,12 +26,20 @@ export function useOrchestrator(onDispatch: DispatchFn, authFetch: AuthFetch) {
     setError(null);
 
     // Create session on first message
-    if (next.length === 1) {
+    if (!sessionCreatedRef.current) {
+      sessionCreatedRef.current = true;
+      const title = text.slice(0, 60) || 'Untitled';
       authFetch('/.netlify/functions/save-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create', id: sessionIdRef.current, status: 'chatting' }),
-      }).catch(console.warn);
+        body: JSON.stringify({
+          action: 'create',
+          id: sessionIdRef.current,
+          status: 'chatting',
+          promptTitle: title,
+          messages: next.map(m => ({ role: m.role, content: m.content })),
+        }),
+      }).then(() => onSidebarRefresh?.()).catch(console.warn);
     }
 
     try {
@@ -57,7 +72,7 @@ export function useOrchestrator(onDispatch: DispatchFn, authFetch: AuthFetch) {
           const allMsgs = [...next];
           if (assistantText) allMsgs.push({ id: asstId, role: 'assistant', content: assistantText });
 
-          const title = (submission.prompt_text ?? submission.prompt_idea ?? '').slice(0, 60) || 'Untitled';
+          const title = (submission.prompt_text ?? submission.prompt_idea ?? text).slice(0, 60) || 'Untitled';
 
           authFetch('/.netlify/functions/save-session', {
             method: 'POST',
@@ -76,19 +91,34 @@ export function useOrchestrator(onDispatch: DispatchFn, authFetch: AuthFetch) {
           setError(event.message);
         }
       }
+
+      // Save messages after each completed exchange
+      if (assistantText) {
+        const allMsgs = [...next, { id: asstId, role: 'assistant' as const, content: assistantText }];
+        authFetch('/.netlify/functions/save-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'update_messages',
+            id: sessionIdRef.current,
+            messages: allMsgs.map(m => ({ role: m.role, content: m.content })),
+          }),
+        }).catch(console.warn);
+      }
     } catch (err) {
       setError(String(err));
     } finally {
       setStreaming(false);
     }
-  }, [messages, authFetch, onDispatch]);
+  }, [messages, authFetch, onDispatch, onSidebarRefresh]);
 
   const reset = useCallback(() => {
     setMessages([]);
     setStreaming(false);
     setError(null);
     sessionIdRef.current = crypto.randomUUID();
+    sessionCreatedRef.current = false;
   }, []);
 
-  return { messages, streaming, error, sendMessage, reset };
+  return { messages, streaming, error, sendMessage, reset, getSessionId };
 }

@@ -143,8 +143,10 @@ function AuthenticatedApp() {
     });
   }
 
+  const refreshSidebar = () => setSidebarRefreshKey(k => k + 1);
+
   const { messages, streaming, error: chatError, sendMessage, reset: resetOrchestrator } =
-    useOrchestrator(handlePipelineDispatch, authFetch);
+    useOrchestrator(handlePipelineDispatch, authFetch, refreshSidebar);
 
   const pollResult = useSessionPoller(phase === 'pipeline_running' ? jobId : null);
 

@@ -1102,6 +1102,7 @@ body {
 }
 .status-dot--chatting  { background: var(--accent); animation: pulse 2s infinite; }
 .status-dot--spinning  { background: #f6ad55; animation: pulse 1.2s infinite; }
+.status-dot--done      { background: #48bb78; }
 .status-dot--error     { background: var(--error); }
 
 /* ── Sidebar item with delete ───────────────────── */
@@ -1166,6 +1167,13 @@ body {
   flex-shrink: 0;
 }
 .sidebar__delete:hover { color: var(--error); opacity: 1; }
+
+.sidebar__empty {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 16px;
+  text-align: center;
+}
 
 /* ── Status Badge ────────────────────────────────── */
 .status-badge {

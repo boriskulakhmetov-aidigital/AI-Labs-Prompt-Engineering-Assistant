@@ -8,8 +8,12 @@ interface Session {
 }
 
 function StatusDot({ status }: { status: string }) {
-  const color = status === 'complete' ? 'var(--color-green)' : status === 'error' ? '#e74c3c' : 'var(--color-text-muted)';
-  return <span className="status-dot" style={{ background: color }} />;
+  const cls =
+    status === 'complete' ? 'status-dot--done' :
+    status === 'error' ? 'status-dot--error' :
+    status === 'chatting' ? 'status-dot--chatting' :
+    'status-dot--spinning';
+  return <span className={`status-dot ${cls}`} />;
 }
 
 function timeGroup(dateStr: string): string {
@@ -66,25 +70,34 @@ export function SessionSidebar({ refreshKey, currentJobId, loadingSessionId, onS
         {Object.entries(grouped).map(([group, items]) => (
           <div key={group}>
             <div className="sidebar__group-label">{group}</div>
-            {items.map(s => (
-              <div
-                key={s.id}
-                className={`sidebar__item${s.id === currentJobId ? ' sidebar__item--active' : ''}`}
-                onClick={() => onSelectSession(s.id)}
-              >
-                <StatusDot status={s.status} />
-                <span className="sidebar__item-title">
-                  {loadingSessionId === s.id ? 'Loading...' : (s.prompt_title || 'Untitled')}
-                </span>
-                <button
-                  className="sidebar__item-delete"
-                  onClick={e => { e.stopPropagation(); onDeleteSession(s.id); }}
-                  title="Delete"
-                >&#10005;</button>
-              </div>
-            ))}
+            {items.map(s => {
+              const isActive = s.id === currentJobId;
+              return (
+                <div key={s.id} className={`sidebar__item-wrap${isActive ? ' sidebar__item-wrap--active' : ''}`}>
+                  <button
+                    className="sidebar__item"
+                    onClick={() => onSelectSession(s.id)}
+                  >
+                    <div className="sidebar__item-left">
+                      <StatusDot status={s.status} />
+                      <span className="sidebar__item-brand">
+                        {loadingSessionId === s.id ? 'Loading...' : (s.prompt_title || 'Untitled')}
+                      </span>
+                    </div>
+                  </button>
+                  <button
+                    className="sidebar__delete"
+                    onClick={e => { e.stopPropagation(); onDeleteSession(s.id); }}
+                    title="Delete"
+                  >&#10005;</button>
+                </div>
+              );
+            })}
           </div>
         ))}
+        {sessions.length === 0 && (
+          <div className="sidebar__empty">No sessions yet</div>
+        )}
       </div>
     </div>
   );
