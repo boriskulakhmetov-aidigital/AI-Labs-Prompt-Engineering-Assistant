@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrandMark } from './design-system/BrandMark';
-import { ThemeToggle } from './design-system/ThemeToggle';
-import { useTheme } from './hooks/useTheme';
+import { BrandMark, ThemeToggle, useTheme } from '@boriskulakhmetov-aidigital/design-system';
 import { SignIn, UserButton, useAuth, useUser } from '@clerk/react';
 import type { AppPhase, PromptSubmission } from './lib/types';
 import { useOrchestrator } from './hooks/useOrchestrator';
