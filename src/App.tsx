@@ -125,20 +125,23 @@ function AuthenticatedApp() {
       iteration: newIteration,
     };
 
+    // New jobId so the poller doesn't see the old 'complete' status
+    const newJobId = crypto.randomUUID();
+
     setSubmission(refinementSub);
+    setJobId(newJobId);
     setPastReport(null);
     setPhase('pipeline_running');
     setIteration(newIteration);
     setIsRefinement(true);
     setEngineeredPrompt(null);
 
-    // Use the same jobId — pipeline will overwrite blob status
     await fetch('/.netlify/functions/pipeline-runner-background', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         submission: refinementSub,
-        jobId,
+        jobId: newJobId,
         userId: userId ?? undefined,
       }),
     });
