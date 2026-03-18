@@ -16,6 +16,8 @@ The Prompt Engineering Assistant helps you craft, test, and refine AI prompts. W
 
 Open the app and sign in with your AIDigital Labs account.
 
+![Prompt Engineering Assistant — Main View](/guide/prompt-engineering-landing.png)
+
 ### 2. Describe the Prompt You Need
 
 Tell the AI what you want your prompt to accomplish. Be as specific as you can about the desired output. For example:
@@ -34,6 +36,8 @@ The AI will ask clarifying questions to understand exactly what you need:
 - Can you share an example of a good output?
 
 > **Tip:** The more examples and context you provide, the better the engineered prompt will be.
+
+![Chat Panel](/guide/prompt-engineering-chat.png)
 
 ### 4. Review the Engineered Prompt
 
@@ -72,11 +76,15 @@ Once you're happy with the prompt, copy it directly from the interface and paste
 
 - **Use dark mode** if you prefer a darker interface. Click the theme toggle in the top-right corner.
 
+![Dark Mode](/guide/prompt-engineering-dark.png)
+
 ---
 
 ## Your Past Sessions
 
 Every session is saved automatically. Use the sidebar to browse your previous prompt engineering sessions.
+
+![Session History](/guide/prompt-engineering-sidebar.png)
 `;
 
 export default function AppHelpPage() {
