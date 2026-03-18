@@ -1,137 +1,113 @@
-# AIDigital Labs — Prompt Engineering Assistant
+# Prompt Engineering Assistant
 
-> Auto-loaded by Claude Code. Provides full context for this app.
+> **URL:** https://prompt-engineer.apps.aidigitallabs.com
+> **Repo:** `boriskulakhmetov-aidigital/AI-Labs-Prompt-Engineering-Assistant`
 
-## What This App Does
-
-AI-powered prompt engineering tool that takes a raw prompt (or idea), tests it 3 times for consistency, re-engineers it for quality, and delivers a detailed analysis report. Supports iterative refinement — users can request changes and the pipeline re-runs with the improved prompt.
-
-## URLs
-
-- **Live:** https://prompt-engineer.apps.aidigitallabs.com
-- **Netlify site ID:** `29571541-70f5-40b8-a024-1965c5f32ff1`
-- **GitHub:** `boriskulakhmetov-aidigital/AI-Labs-Prompt-Engineering-Assistant`
-- **Deploy:** `npx netlify-cli deploy --prod --dir=dist --site=29571541-70f5-40b8-a024-1965c5f32ff1`
+The Prompt Engineering Assistant helps users craft, optimize, and test AI prompts. Users paste an existing prompt or describe what they need, and the tool runs a multi-stage pipeline: prompt design, 3x testing, engineering, and reporting. Supports iterative refinement with multiple iterations.
 
 ## Tech Stack
 
-- React 19 + Vite 6 + TypeScript
-- `@boriskulakhmetov-aidigital/design-system` (shared components + theme)
-- Clerk authentication (`@clerk/react`)
-- Google Gemini AI (`@google/genai`) — `gemini-2.0-flash` for orchestrator and prompt agent
-- Neon serverless PostgreSQL (`@neondatabase/serverless`)
-- Netlify Blobs for async job storage
-- Netlify Functions (serverless backend, `.mts` ESM with esbuild)
-- `marked` for Markdown rendering, `html2pdf.js` for PDF export
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19, Vite, TypeScript |
+| Auth | Clerk (@clerk/react, @clerk/backend) |
+| Database | Supabase PostgreSQL (RLS + Realtime) |
+| AI | Google Gemini (@google/genai) |
+| Backend | Netlify Functions (serverless) |
+| Hosting | Netlify |
+| PDF Export | html2pdf.js |
+| Markdown | marked (via design system renderMarkdown) |
+| Design System | @boriskulakhmetov-aidigital/design-system ^7.6.1 |
 
-## Key Patterns
-
-- Background function config: `export const config: Config = { background: true }`
-- Prompts are TypeScript string constants (not file reads) for reliable esbuild bundling
-- Frontend polls `report-status` every 3s using `useSessionPoller`
-- Same Clerk auth + Neon DB user base as other audit apps
-- DB tables are prefixed with `pe_` to avoid collision
-
-## Design System Integration
-
-```typescript
-// main.tsx
-import { applyTheme, aiLabsTheme } from '@boriskulakhmetov-aidigital/design-system'
-import '@boriskulakhmetov-aidigital/design-system/style.css'
-applyTheme(aiLabsTheme)
-```
-
-Components used from design system: `AppShell`, `ChatPanel`, `ReportViewer`, `DownloadBar`
-
-AppShell props: `activityLabel="Session"`, `detailEndpoint="get-session"`
-
-## Project Structure
+## Architecture
 
 ```
 src/
-  main.tsx              — Entry point, Clerk auth provider, theme setup, public report route
-  App.tsx               — AppShell + phase-based UI (chat → pipeline_running → report_ready)
-  index.css             — CSS variable definitions
-  lib/
-    types.ts            — AppPhase, ChatMessage, PromptSubmission, PipelineStatus
-    sseParser.ts        — SSE stream parser utility
-    reportDownload.ts   — PDF/report download helpers
-  hooks/
-    useOrchestrator.ts  — Chat intake flow, dispatches pipeline when ready
-    useSessionPoller.ts — Polls pipeline job status
+  main.tsx                          ← ClerkProvider, applyTheme, public report route
+  App.tsx                           ← AppShell + AppContent (domain logic)
   components/
-    SessionSidebar.tsx  — Past sessions list with load/delete
-    ProgressIndicator.tsx — Pipeline-in-progress animation with stage display
-    RefinementInput.tsx — Post-report refinement request input
+    SessionSidebar.tsx              ← Session list sidebar
+    ProgressIndicator.tsx           ← Pipeline-in-progress UI with stage indicators
+    RefinementInput.tsx             ← Post-report refinement request input
+  hooks/
+    useOrchestrator.ts              ← SSE streaming chat with orchestrator
+  lib/
+    types.ts                        ← AppPhase, PromptSubmission, PipelineStatus
   pages/
-    PublicReportPage.tsx — Public shareable report at /r/:id (no auth)
-netlify/functions/
-  _shared/              — Shared utilities (DB client, auth helpers)
-  orchestrator.mts      — Chat intake SSE endpoint (streaming)
-  pipeline-runner-background.mts — Background function: runs prompt analysis pipeline
-  get-session.mts       — Fetch single session by ID
-  list-sessions.mts     — List user's past sessions
-  save-session.mts      — Create/update/delete sessions
-  report-status.mts     — Poll pipeline job status
-  report-share.mts      — Generate/manage public share links
-  public-report.mts     — Fetch public report data (no auth)
-  init-user.mts         — Initialize user record on first login
-  admin-accounts.mts    — Admin account management
-  db-migrate.mts        — Database migration utility
+    PublicReportPage.tsx            ← Unauthenticated shareable report view
+netlify/
+  functions/
+    _shared/
+      supabase.ts                   ← Supabase service-role client + DB helpers
+      auth.ts                       ← Clerk token verification
+    orchestrator.mts                ← Chat intake agent (SSE streaming)
+    pipeline-runner-background.mts  ← Multi-stage prompt pipeline (design, test, engineer, report)
 ```
 
-## Data Model
+## Database Table: `pe_sessions`
 
-```typescript
-type AppPhase = 'chat' | 'pipeline_running' | 'report_ready' | 'error';
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key (also used as jobId) |
+| user_id | text | Clerk user ID |
+| org_id | text | Organization ID |
+| prompt_title | text | Short title derived from prompt |
+| submission | jsonb | PromptSubmission (prompt_text, needs_design, model_target, etc.) |
+| status | text | pending / streaming / complete / error |
+| partial_text | text | Current pipeline stage name |
+| report | text | Final markdown report |
+| meta | jsonb | Pipeline metadata (engineeredPrompt, designedPrompt, testResults, iteration) |
+| deleted_by_user | boolean | Soft delete flag |
+| created_at | timestamptz | Creation timestamp |
+| updated_at | timestamptz | Last update timestamp |
 
-interface ChatMessage { id: string; role: 'user' | 'assistant'; content: string; }
+## Netlify Functions
 
-interface PromptSubmission {
-  prompt_text?: string; prompt_idea?: string; needs_design: boolean;
-  model_target?: string; use_case?: string; desired_output?: string;
-  constraints?: string; additional_context?: string;
-  refinement_request?: string; base_prompt?: string; iteration?: number;
-}
+| Function | Description |
+|----------|-------------|
+| `orchestrator.mts` | SSE streaming chat that collects prompt text, use case, constraints, and dispatches the pipeline |
+| `pipeline-runner-background.mts` | Multi-stage pipeline: prompt design (optional), 3x testing, engineering, and report generation |
 
-interface PipelineStatus {
-  status: 'pending' | 'revising' | 'designing' | 'testing' | 'engineering' | 'complete' | 'error';
-  stage?: string; designedPrompt?: string; testResults?: string[];
-  report?: string; engineeredPrompt?: string; partial?: string; error?: string;
-}
+## Key Concepts
+
+- **Pipeline stages:** revising -> designing (optional) -> testing -> engineering -> complete
+- **Refinement:** After receiving a report, users can request changes; creates a new job with `refinement_request` and `base_prompt`
+- **Iteration tracking:** Each refinement increments the iteration counter
+
+## Environment Variables
+
+All shared env vars are inherited from Netlify team level:
+
+| Variable | Side |
+|----------|------|
+| `VITE_CLERK_PUBLISHABLE_KEY` | Client |
+| `CLERK_SECRET_KEY` | Server |
+| `GEMINI_API_KEY` | Server |
+| `VITE_SUPABASE_URL` | Client |
+| `VITE_SUPABASE_ANON_KEY` | Client |
+| `SUPABASE_URL` | Server |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server |
+| `NPM_TOKEN` | Build |
+
+## Development Setup
+
+```bash
+git clone https://github.com/boriskulakhmetov-aidigital/AI-Labs-Prompt-Engineering-Assistant.git
+cd AI-Labs-Prompt-Engineering-Assistant
+npm install
+# Create .env.local with required variables (see design system CLAUDE.md for values)
+npm run dev
 ```
 
-## API Endpoints (Netlify Functions)
+## Deployment
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `orchestrator` | POST (SSE) | Chat intake — streams assistant messages, dispatches pipeline |
-| `pipeline-runner-background` | POST | Background: runs prompt analysis, testing, and re-engineering |
-| `get-session` | GET | Fetch single session by `?id=` |
-| `list-sessions` | GET | List all sessions for authenticated user |
-| `save-session` | POST | Create, update, or delete sessions |
-| `report-status` | GET | Poll pipeline job completion status |
-| `report-share` | POST | Generate or manage public share link |
-| `public-report` | GET | Fetch public report (no auth required) |
-| `init-user` | POST | Initialize user record on first sign-in |
-| `admin-accounts` | GET/POST | Admin-only account management |
-| `db-migrate` | POST | Run database migrations |
+Auto-deploys on push to `main` via Netlify (GitHub integration).
 
-## CSS Notes
+Netlify Site ID: `29571541-70f5-40b8-a024-1965c5f32ff1`
 
-- `index.css` defines theme variables consistent with other AIDigital Labs apps
-- Theme is applied via `applyTheme(aiLabsTheme)` from design system
+## Standing Instructions
 
-## NPM Authentication
-
-`.npmrc` at repo root:
-```
-@boriskulakhmetov-aidigital:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NPM_TOKEN}
-```
-
-For local dev: set `NPM_TOKEN` env var to the GitHub PAT (see design system CLAUDE.md for the token).
-
-## Architecture Reference
-
-This app is part of the AIDigital Labs portfolio. For the full architecture (all apps, design system, theme system, conventions), see `CLAUDE.md` in the design system repo: `AIDigital-Labs-Design-System`.
+- Execute all bash commands, git commits, pushes, API calls, and deploys without asking for confirmation
+- Always use `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>` in commits
+- Use Unix paths with forward slashes (Git Bash on Windows)
+- Set `export PATH="/c/Program Files/nodejs:$PATH"` before npm commands
