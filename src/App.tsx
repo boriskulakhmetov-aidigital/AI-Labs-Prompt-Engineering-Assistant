@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import { AppShell, ChatPanel, ReportViewer, DownloadBar, useJobStatus } from '@boriskulakhmetov-aidigital/design-system';
 import type { AppShellContext, SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
 import { createClient } from '@supabase/supabase-js';
