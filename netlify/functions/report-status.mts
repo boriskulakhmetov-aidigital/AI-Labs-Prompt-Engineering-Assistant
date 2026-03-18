@@ -1,7 +1,16 @@
 import { supabase } from './_shared/supabase.js';
+import { requireAuth } from './_shared/auth.js';
 import type { PipelineJobStatus } from './_shared/types.js';
 
 export default async (req: Request) => {
+  let userId: string;
+  try {
+    const auth = await requireAuth(req);
+    userId = auth.userId;
+  } catch {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const url = new URL(req.url);
   const jobId = url.searchParams.get('jobId');
 
@@ -12,7 +21,7 @@ export default async (req: Request) => {
   try {
     const { data } = await supabase
       .from('job_status')
-      .select('status, partial_text, report, error, meta')
+      .select('status, partial_text, report, error, meta, user_id')
       .eq('id', jobId)
       .maybeSingle();
 

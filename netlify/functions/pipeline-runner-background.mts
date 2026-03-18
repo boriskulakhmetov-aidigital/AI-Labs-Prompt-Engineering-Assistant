@@ -5,6 +5,7 @@ import { PROMPT_TESTER_SYSTEM_PROMPT } from './_shared/promptTesterPrompt.js';
 import { PROMPT_ENGINEER_SYSTEM_PROMPT } from './_shared/promptEngineerPrompt.js';
 import { TEST_INPUT_GENERATOR_PROMPT } from './_shared/testInputPrompt.js';
 import { supabase, updateSessionReport, incrementUserSessionCount } from './_shared/supabase.js';
+import { requireAuth } from './_shared/auth.js';
 import { enforceAccess, trackUsage } from './_shared/access.js';
 import type { PipelineJobRequest, PipelineJobStatus } from './_shared/types.js';
 import { log } from './_shared/logger.js';
@@ -12,6 +13,12 @@ import { log } from './_shared/logger.js';
 export const config: Config = { background: true };
 
 export default async (req: Request) => {
+  try {
+    await requireAuth(req);
+  } catch {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const body: PipelineJobRequest = await req.json();
   const { submission, jobId, userId, messages } = body;
 
