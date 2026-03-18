@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { parseSSE } from '../lib/sseParser';
+import { parseSSEStream as parseSSE } from '@boriskulakhmetov-aidigital/design-system';
 import type { ChatMessage, PromptSubmission } from '../lib/types';
 import type { SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
 
