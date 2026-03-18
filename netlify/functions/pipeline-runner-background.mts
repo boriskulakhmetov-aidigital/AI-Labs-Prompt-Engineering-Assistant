@@ -6,6 +6,7 @@ import { PROMPT_ENGINEER_SYSTEM_PROMPT } from './_shared/promptEngineerPrompt.js
 import { TEST_INPUT_GENERATOR_PROMPT } from './_shared/testInputPrompt.js';
 import { supabase, updateSessionReport, incrementUserSessionCount } from './_shared/supabase.js';
 import type { PipelineJobRequest, PipelineJobStatus } from './_shared/types.js';
+import { log } from './_shared/logger.js';
 
 export const config: Config = { background: true };
 
@@ -37,6 +38,10 @@ export default async (req: Request) => {
   };
 
   await setStatus({ status: 'pending', stage: 'Initializing pipeline...', startedAt: Date.now() });
+
+  const ai_model = 'gemini-3.1-pro-preview';
+  const startTime = Date.now();
+  log.info('pipeline.start', { function_name: 'pipeline-runner-background', entity_type: 'session', entity_id: jobId, user_id: userId, correlation_id: jobId, ai_provider: 'gemini', ai_model });
 
   try {
     if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
@@ -260,8 +265,13 @@ Analyze the prompt's performance across these three test runs and produce your s
     await updateSessionReport(jobId, finalReport, 'complete');
     if (userId && !isRefinement) await incrementUserSessionCount(userId);
 
+    const duration_ms = Date.now() - startTime;
+    log.info('pipeline.complete', { function_name: 'pipeline-runner-background', entity_type: 'session', entity_id: jobId, user_id: userId, correlation_id: jobId, ai_provider: 'gemini', ai_model, duration_ms });
+
   } catch (err) {
     console.error('Pipeline runner error:', err);
+    const duration_ms = Date.now() - startTime;
+    log.error('pipeline.error', { function_name: 'pipeline-runner-background', entity_type: 'session', entity_id: jobId, user_id: userId, correlation_id: jobId, error: err, error_category: 'gemini_api', duration_ms });
     await setStatus({
       status: 'error',
       error: String(err),

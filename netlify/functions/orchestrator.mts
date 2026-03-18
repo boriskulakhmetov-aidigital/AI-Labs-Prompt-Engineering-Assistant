@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { ORCHESTRATOR_SYSTEM_PROMPT } from './_shared/orchestratorPrompt.js';
+import { log } from './_shared/logger.js';
 
 const DISPATCH_PIPELINE_TOOL = {
   name: 'dispatch_pipeline',
@@ -77,6 +78,9 @@ export default async (req: Request) => {
       }, 15_000);
 
       try {
+        log.info('orchestrator.start', { function_name: 'orchestrator' });
+        const timer = log.time('gemini.call', { function_name: 'orchestrator', ai_provider: 'gemini', ai_model: 'gemini-3-flash-preview' });
+
         const stream = await ai.models.generateContentStream({
           model: 'gemini-3-flash-preview',
           contents,
@@ -101,9 +105,11 @@ export default async (req: Request) => {
           }
         }
 
+        timer.end();
         emit({ type: 'done' });
       } catch (err) {
         console.error('Orchestrator error:', err);
+        log.error('orchestrator.error', { function_name: 'orchestrator', error: err, error_category: 'gemini_api' });
         emit({ type: 'error', message: String(err) });
       } finally {
         clearInterval(keepAliveInterval);

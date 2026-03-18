@@ -1,5 +1,6 @@
 import { verifyToken, createClerkClient } from '@clerk/backend';
 import { getUserStatus } from './supabase.js';
+import { log } from './logger.js';
 
 export async function requireAuth(req: Request): Promise<{ userId: string; email: string | null }> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -7,7 +8,10 @@ export async function requireAuth(req: Request): Promise<{ userId: string; email
 
   const authHeader = req.headers.get('Authorization');
   const token = authHeader?.replace('Bearer ', '').trim();
-  if (!token) throw new Error('Unauthorized');
+  if (!token) {
+    log.warn('auth.failure', { function_name: 'auth', message: 'Unauthorized', meta: { endpoint: req.url } });
+    throw new Error('Unauthorized');
+  }
 
   const payload = await verifyToken(token, { secretKey });
   const userId = payload.sub;
