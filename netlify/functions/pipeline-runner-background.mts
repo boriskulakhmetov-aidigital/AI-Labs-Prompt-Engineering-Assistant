@@ -5,6 +5,7 @@ import { PROMPT_TESTER_SYSTEM_PROMPT } from './_shared/promptTesterPrompt.js';
 import { PROMPT_ENGINEER_SYSTEM_PROMPT } from './_shared/promptEngineerPrompt.js';
 import { TEST_INPUT_GENERATOR_PROMPT } from './_shared/testInputPrompt.js';
 import { supabase, updateSessionReport, incrementUserSessionCount } from './_shared/supabase.js';
+import { enforceAccess, trackUsage } from './_shared/access.js';
 import type { PipelineJobRequest, PipelineJobStatus } from './_shared/types.js';
 import { log } from './_shared/logger.js';
 
@@ -38,6 +39,16 @@ export default async (req: Request) => {
   };
 
   await setStatus({ status: 'pending', stage: 'Initializing pipeline...', startedAt: Date.now() });
+
+  // ── Tier-based access control ──────────────────────────────────────────────
+  if (userId) {
+    const access = await enforceAccess(userId, 'prompt-engineering');
+    if (!access.allowed) {
+      await setStatus({ status: 'error', error: access.reason ?? 'Access denied', failedAt: Date.now() });
+      await updateSessionReport(jobId, '', 'error', access.reason ?? 'Access denied');
+      return;
+    }
+  }
 
   const ai_model = 'gemini-3.1-pro-preview';
   const startTime = Date.now();
@@ -264,6 +275,7 @@ Analyze the prompt's performance across these three test runs and produce your s
 
     await updateSessionReport(jobId, finalReport, 'complete');
     if (userId && !isRefinement) await incrementUserSessionCount(userId);
+    if (userId) await trackUsage(userId, 'prompt-engineering').catch(err => console.warn('trackUsage failed:', err));
 
     const duration_ms = Date.now() - startTime;
     log.info('pipeline.complete', { function_name: 'pipeline-runner-background', entity_type: 'session', entity_id: jobId, user_id: userId, correlation_id: jobId, ai_provider: 'gemini', ai_model, duration_ms });
