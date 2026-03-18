@@ -1,13 +1,15 @@
 import { useState, useRef, useCallback } from 'react';
 import { parseSSE } from '../lib/sseParser';
 import type { ChatMessage, PromptSubmission } from '../lib/types';
+import type { SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
+
+const SESSION_TABLE = 'pe_sessions';
 
 type DispatchFn = (submission: PromptSubmission, sessionId: string, messages: ChatMessage[]) => void;
-type AuthFetch = (url: string, options?: RequestInit) => Promise<Response>;
 
 export function useOrchestrator(
   onDispatch: DispatchFn,
-  authFetch: AuthFetch,
+  supabase: SupabaseClient | null,
   onSidebarRefresh?: () => void,
 ) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -26,20 +28,19 @@ export function useOrchestrator(
     setError(null);
 
     // Create session on first message
-    if (!sessionCreatedRef.current) {
+    if (!sessionCreatedRef.current && supabase) {
       sessionCreatedRef.current = true;
       const title = text.slice(0, 60) || 'Untitled';
-      authFetch('/.netlify/functions/save-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'create',
+      supabase
+        .from(SESSION_TABLE)
+        .upsert({
           id: sessionIdRef.current,
           status: 'chatting',
-          promptTitle: title,
+          prompt_title: title,
           messages: next.map(m => ({ role: m.role, content: m.content })),
-        }),
-      }).then(() => onSidebarRefresh?.()).catch(console.warn);
+        }, { onConflict: 'id', ignoreDuplicates: true })
+        .then(() => onSidebarRefresh?.())
+        .catch(console.warn);
     }
 
     try {
@@ -74,17 +75,19 @@ export function useOrchestrator(
 
           const title = (submission.prompt_text ?? submission.prompt_idea ?? text).slice(0, 60) || 'Untitled';
 
-          authFetch('/.netlify/functions/save-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'update_submission',
-              id: sid,
-              submission,
-              promptTitle: title,
-              messages: allMsgs.map(m => ({ role: m.role, content: m.content })),
-            }),
-          }).catch(console.warn);
+          if (supabase) {
+            supabase
+              .from(SESSION_TABLE)
+              .update({
+                submission,
+                prompt_title: title,
+                messages: allMsgs.map(m => ({ role: m.role, content: m.content })),
+                status: 'pending',
+              })
+              .eq('id', sid)
+              .then(() => {})
+              .catch(console.warn);
+          }
 
           onDispatch(submission, sid, allMsgs);
         } else if (event.type === 'error') {
@@ -93,24 +96,23 @@ export function useOrchestrator(
       }
 
       // Save messages after each completed exchange
-      if (assistantText) {
+      if (assistantText && supabase) {
         const allMsgs = [...next, { id: asstId, role: 'assistant' as const, content: assistantText }];
-        authFetch('/.netlify/functions/save-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'update_messages',
-            id: sessionIdRef.current,
+        supabase
+          .from(SESSION_TABLE)
+          .update({
             messages: allMsgs.map(m => ({ role: m.role, content: m.content })),
-          }),
-        }).catch(console.warn);
+          })
+          .eq('id', sessionIdRef.current)
+          .then(() => {})
+          .catch(console.warn);
       }
     } catch (err) {
       setError(String(err));
     } finally {
       setStreaming(false);
     }
-  }, [messages, authFetch, onDispatch, onSidebarRefresh]);
+  }, [messages, supabase, onDispatch, onSidebarRefresh]);
 
   const reset = useCallback(() => {
     setMessages([]);

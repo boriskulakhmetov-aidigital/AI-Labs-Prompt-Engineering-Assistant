@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
 import { BrandMark, ReportViewer } from '@boriskulakhmetov-aidigital/design-system';
+import { createClient } from '@supabase/supabase-js';
+
+const SESSION_TABLE = 'pe_sessions';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 export function PublicReportPage() {
   const [report, setReport] = useState<string | null>(null);
@@ -8,11 +17,18 @@ export function PublicReportPage() {
 
   useEffect(() => {
     const token = window.location.pathname.replace('/r/', '');
-    if (!token) { setError('Invalid link'); return; }
+    if (!token || !supabase) { setError('Invalid link'); return; }
 
-    fetch(`/.netlify/functions/public-report?token=${encodeURIComponent(token)}`)
-      .then(r => { if (!r.ok) throw new Error('Not found'); return r.json(); })
-      .then(data => {
+    supabase
+      .from(SESSION_TABLE)
+      .select('prompt_title, report, report_data, is_public, submission')
+      .eq('share_token', token)
+      .maybeSingle()
+      .then(({ data, error: err }) => {
+        if (err || !data || !data.is_public) {
+          setError('Report not found or not public');
+          return;
+        }
         setReport(data.report ?? '');
         setTitle(data.prompt_title ?? 'Prompt Analysis');
       })

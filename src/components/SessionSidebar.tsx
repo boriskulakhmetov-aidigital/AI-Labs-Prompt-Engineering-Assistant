@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import type { SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
+
+const SESSION_TABLE = 'pe_sessions';
 
 interface Session {
   id: string;
@@ -27,22 +30,27 @@ function timeGroup(dateStr: string): string {
   return 'Older';
 }
 
-export function SessionSidebar({ refreshKey, currentJobId, loadingSessionId, onSelectSession, onNewSession, onDeleteSession, authFetch }: {
+export function SessionSidebar({ refreshKey, currentJobId, loadingSessionId, onSelectSession, onNewSession, onDeleteSession, supabaseRef }: {
   refreshKey: number;
   currentJobId: string | null;
   loadingSessionId: string | null;
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
   onDeleteSession: (id: string) => void;
-  authFetch: (url: string, options?: RequestInit) => Promise<Response>;
+  supabaseRef: React.MutableRefObject<SupabaseClient | null>;
 }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    authFetch('/.netlify/functions/list-sessions')
-      .then(r => r.json())
-      .then(data => setSessions(data.sessions ?? []))
+    const sb = supabaseRef.current;
+    if (!sb) return;
+    sb.from(SESSION_TABLE)
+      .select('id, prompt_title, status, created_at, completed_at')
+      .or('deleted_by_user.is.null,deleted_by_user.eq.false')
+      .order('created_at', { ascending: false })
+      .limit(100)
+      .then(({ data }) => setSessions((data as Session[]) ?? []))
       .catch(console.warn);
   }, [refreshKey]);
 

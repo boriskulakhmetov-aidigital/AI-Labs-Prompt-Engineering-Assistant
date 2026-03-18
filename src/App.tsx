@@ -12,6 +12,8 @@ import { SessionSidebar } from './components/SessionSidebar';
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 type AuthFetch = (url: string, options?: RequestInit) => Promise<Response>;
 
+const SESSION_TABLE = 'pe_sessions';
+
 const supabaseConfig = import.meta.env.VITE_SUPABASE_URL ? {
   url: import.meta.env.VITE_SUPABASE_URL as string,
   anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
@@ -35,12 +37,7 @@ export default function App() {
     onDeleteSession: () => {},
   });
 
-  const authFetchRef = useRef<AuthFetch>(async () => new Response());
-
-  const sidebarAuthFetch: AuthFetch = useCallback(
-    (url, options) => authFetchRef.current(url, options),
-    [],
-  );
+  const supabaseRef = useRef<SupabaseClient | null>(null);
 
   return (
     <AppShell
@@ -57,7 +54,7 @@ export default function App() {
           onSelectSession={(id) => handlersRef.current.onSelectSession(id)}
           onNewSession={() => handlersRef.current.onNewSession()}
           onDeleteSession={(id) => handlersRef.current.onDeleteSession(id)}
-          authFetch={sidebarAuthFetch}
+          supabaseRef={supabaseRef}
         />
       }
     >
@@ -73,7 +70,7 @@ export default function App() {
           sidebarRefreshKey={sidebarRefreshKey}
           setSidebarRefreshKey={setSidebarRefreshKey}
           handlersRef={handlersRef}
-          authFetchRef={authFetchRef}
+          supabaseRef={supabaseRef}
         />
       )}
     </AppShell>
@@ -97,7 +94,7 @@ interface AppContentProps {
     onNewSession: () => void;
     onDeleteSession: (id: string) => void;
   }>;
-  authFetchRef: React.MutableRefObject<AuthFetch>;
+  supabaseRef: React.MutableRefObject<SupabaseClient | null>;
 }
 
 function AppContent({
@@ -105,7 +102,7 @@ function AppContent({
   jobId, setJobId,
   loadingSessionId, setLoadingSessionId,
   sidebarRefreshKey, setSidebarRefreshKey,
-  handlersRef, authFetchRef,
+  handlersRef, supabaseRef,
 }: AppContentProps) {
   const [phase, setPhase]                 = useState<AppPhase>('chat');
   const [submission, setSubmission]       = useState<PromptSubmission | null>(null);
@@ -116,8 +113,8 @@ function AppContent({
   const [isRefinement, setIsRefinement]   = useState(false);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
-  // Expose authFetch to sidebar via ref bridge
-  authFetchRef.current = authFetch;
+  // Expose supabase to sidebar via ref bridge
+  supabaseRef.current = supabase;
 
   async function handlePipelineDispatch(sub: PromptSubmission, sessionId: string, messages: ChatMessage[]) {
     setSubmission(sub);
@@ -182,7 +179,7 @@ function AppContent({
   const refreshSidebar = () => setSidebarRefreshKey(k => k + 1);
 
   const { messages, streaming, error: chatError, sendMessage, reset: resetOrchestrator } =
-    useOrchestrator(handlePipelineDispatch, authFetch, refreshSidebar);
+    useOrchestrator(handlePipelineDispatch, supabase, refreshSidebar);
 
   // Realtime job status via Supabase (replaces polling)
   const jobStatus = useJobStatus(supabase, phase === 'pipeline_running' ? jobId : null);
@@ -228,12 +225,14 @@ function AppContent({
   }
 
   async function handleLoadSession(id: string) {
+    if (!supabase) return;
     setLoadingSessionId(id);
     try {
-      const res = await authFetch('/.netlify/functions/get-session?id=' + encodeURIComponent(id));
-      if (!res.ok) return;
-      const data = await res.json();
-      const session = data.session;
+      const { data: session } = await supabase
+        .from(SESSION_TABLE)
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
       if (!session) return;
 
       setJobId(session.id);
@@ -259,11 +258,14 @@ function AppContent({
   }
 
   async function handleDeleteSession(id: string) {
-    authFetch('/.netlify/functions/save-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete', id }),
-    }).catch(console.warn);
+    if (supabase) {
+      supabase
+        .from(SESSION_TABLE)
+        .update({ deleted_by_user: true })
+        .eq('id', id)
+        .then(() => {})
+        .catch(console.warn);
+    }
     if (jobId === id) handleNewSession();
     setSidebarRefreshKey(k => k + 1);
   }
