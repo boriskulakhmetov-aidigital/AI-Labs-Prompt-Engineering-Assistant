@@ -1,5 +1,5 @@
 import { requireAuth } from './_shared/auth.js';
-import { createSession, updateSessionMessages, updateSessionSubmission, softDeleteSession } from './_shared/db.js';
+import { createSession, updateSessionMessages, updateSessionSubmission, softDeleteSession } from './_shared/supabase.js';
 import type { PromptSubmission } from './_shared/types.js';
 
 export default async (req: Request) => {

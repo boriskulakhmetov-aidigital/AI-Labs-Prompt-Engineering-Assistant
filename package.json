@@ -9,12 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@boriskulakhmetov-aidigital/design-system": "^6.0.3",
+    "@boriskulakhmetov-aidigital/design-system": "^7.0.1",
     "@clerk/backend": "^3.2.0",
     "@clerk/react": "^6.1.0",
     "@google/genai": "^0.7.0",
-    "@neondatabase/serverless": "^1.0.2",
-    "@netlify/blobs": "^8.1.0",
+    "@supabase/supabase-js": "^2.99.2",
     "html2pdf.js": "^0.14.0",
     "marked": "^12.0.0",
     "react": "^19.0.0",

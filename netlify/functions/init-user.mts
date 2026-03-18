@@ -1,5 +1,5 @@
 import { requireAuth } from './_shared/auth.js';
-import { upsertUser, getUserStatus } from './_shared/db.js';
+import { upsertUser, getUserStatus } from './_shared/supabase.js';
 
 function orgDomainFromEmail(email: string | null): string | null {
   if (!email) return null;

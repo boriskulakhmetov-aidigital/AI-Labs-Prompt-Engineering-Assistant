@@ -1,5 +1,5 @@
 import { verifyToken, createClerkClient } from '@clerk/backend';
-import { getUserStatus } from './db.js';
+import { getUserStatus } from './supabase.js';
 
 export async function requireAuth(req: Request): Promise<{ userId: string; email: string | null }> {
   const secretKey = process.env.CLERK_SECRET_KEY;

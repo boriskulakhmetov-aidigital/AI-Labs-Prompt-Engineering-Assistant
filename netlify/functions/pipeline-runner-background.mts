@@ -1,11 +1,10 @@
 import type { Config } from '@netlify/functions';
 import { GoogleGenAI } from '@google/genai';
-import { getStore } from '@netlify/blobs';
 import { PROMPT_DESIGN_SYSTEM_PROMPT, PROMPT_REVISION_SYSTEM_PROMPT } from './_shared/promptDesignPrompt.js';
 import { PROMPT_TESTER_SYSTEM_PROMPT } from './_shared/promptTesterPrompt.js';
 import { PROMPT_ENGINEER_SYSTEM_PROMPT } from './_shared/promptEngineerPrompt.js';
 import { TEST_INPUT_GENERATOR_PROMPT } from './_shared/testInputPrompt.js';
-import { updateSessionReport, incrementUserSessionCount } from './_shared/db.js';
+import { supabase, updateSessionReport, incrementUserSessionCount } from './_shared/supabase.js';
 import type { PipelineJobRequest, PipelineJobStatus } from './_shared/types.js';
 
 export const config: Config = { background: true };
@@ -14,12 +13,27 @@ export default async (req: Request) => {
   const body: PipelineJobRequest = await req.json();
   const { submission, jobId, userId, messages } = body;
 
-  const store = getStore('analysis-reports');
   const iteration = submission.iteration ?? 1;
   const isRefinement = !!submission.refinement_request && !!submission.base_prompt;
 
   const setStatus = async (s: PipelineJobStatus) => {
-    await store.set(jobId, JSON.stringify({ ...s, iteration }));
+    await supabase.from('job_status').upsert({
+      id: jobId,
+      app: 'prompt-engineering',
+      status: s.status,
+      partial_text: s.stage ?? null,
+      report: s.report ?? null,
+      error: s.error ?? null,
+      meta: {
+        iteration,
+        designedPrompt: s.designedPrompt,
+        testResults: s.testResults,
+        engineeredPrompt: s.engineeredPrompt,
+      },
+      updated_at: new Date().toISOString(),
+      ...(s.startedAt ? { started_at: new Date(s.startedAt).toISOString() } : {}),
+      ...(s.completedAt ? { completed_at: new Date(s.completedAt).toISOString() } : {}),
+    });
   };
 
   await setStatus({ status: 'pending', stage: 'Initializing pipeline...', startedAt: Date.now() });

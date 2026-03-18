@@ -1,5 +1,5 @@
 import { requireAuth, isAdminUser } from './_shared/auth.js';
-import { migrateDb } from './_shared/db.js';
+import { migrateDb } from './_shared/supabase.js';
 
 export default async (req: Request) => {
   try {

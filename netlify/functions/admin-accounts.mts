@@ -2,7 +2,7 @@ import { requireAuth, isAdminUser } from './_shared/auth.js';
 import {
   adminListAccounts, adminListUsers, adminGetUserSessions,
   adminSetUserStatus, adminSetOrgStatus
-} from './_shared/db.js';
+} from './_shared/supabase.js';
 
 export default async (req: Request) => {
   try {

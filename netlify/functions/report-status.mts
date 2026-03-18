@@ -1,4 +1,4 @@
-import { getStore } from '@netlify/blobs';
+import { supabase } from './_shared/supabase.js';
 import type { PipelineJobStatus } from './_shared/types.js';
 
 export default async (req: Request) => {
@@ -10,11 +10,25 @@ export default async (req: Request) => {
   }
 
   try {
-    const store = getStore('analysis-reports');
-    const value = await store.get(jobId);
+    const { data } = await supabase
+      .from('job_status')
+      .select('status, partial_text, report, error, meta')
+      .eq('id', jobId)
+      .maybeSingle();
 
-    const status: PipelineJobStatus = value
-      ? JSON.parse(value)
+    const meta = data?.meta as Record<string, unknown> | null;
+
+    const status: PipelineJobStatus = data
+      ? {
+          status: data.status as PipelineJobStatus['status'],
+          ...(data.partial_text ? { stage: data.partial_text } : {}),
+          ...(data.report ? { report: data.report } : {}),
+          ...(data.error ? { error: data.error } : {}),
+          ...(meta?.iteration ? { iteration: meta.iteration as number } : {}),
+          ...(meta?.designedPrompt ? { designedPrompt: meta.designedPrompt as string } : {}),
+          ...(meta?.testResults ? { testResults: meta.testResults as string[] } : {}),
+          ...(meta?.engineeredPrompt ? { engineeredPrompt: meta.engineeredPrompt as string } : {}),
+        }
       : { status: 'pending' };
 
     return Response.json(status, {

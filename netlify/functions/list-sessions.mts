@@ -1,5 +1,5 @@
 import { requireAuth } from './_shared/auth.js';
-import { listUserSessions } from './_shared/db.js';
+import { listUserSessions } from './_shared/supabase.js';
 
 export default async (req: Request) => {
   try {
