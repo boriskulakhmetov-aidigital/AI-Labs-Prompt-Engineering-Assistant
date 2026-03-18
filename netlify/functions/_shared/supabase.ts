@@ -49,16 +49,25 @@ export async function upsertUser(userId: string, email: string | null, orgDomain
   const isAiDigital = email?.toLowerCase().endsWith('@aidigital.com') ?? false;
   const initialStatus = isAiDigital ? 'active' : 'trial';
 
-  await sb.from('app_users').upsert(
-    {
+  // Check if user already exists — don't overwrite status on existing users
+  const { data: existing } = await sb.from('app_users').select('user_id').eq('user_id', userId).single();
+  if (existing) {
+    // Existing user — update email/domain but preserve status
+    await sb.from('app_users').update({
+      user_email: email,
+      org_domain: orgDomain || undefined,
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', userId);
+  } else {
+    // New user — set initial status
+    await sb.from('app_users').insert({
       user_id: userId,
       user_email: email,
       org_domain: orgDomain,
       status: initialStatus,
       updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'user_id' }
-  );
+    });
+  }
 
   // Preserve existing org_domain if already set
   if (orgDomain === null) {
