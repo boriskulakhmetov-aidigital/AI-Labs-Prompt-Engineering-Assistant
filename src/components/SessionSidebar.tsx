@@ -30,29 +30,28 @@ function timeGroup(dateStr: string): string {
   return 'Older';
 }
 
-export function SessionSidebar({ refreshKey, currentJobId, loadingSessionId, onSelectSession, onNewSession, onDeleteSession, supabaseRef }: {
+export function SessionSidebar({ refreshKey, currentJobId, loadingSessionId, onSelectSession, onNewSession, onDeleteSession, supabase }: {
   refreshKey: number;
   currentJobId: string | null;
   loadingSessionId: string | null;
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
   onDeleteSession: (id: string) => void;
-  supabaseRef: React.MutableRefObject<SupabaseClient | null>;
+  supabase: SupabaseClient | null;
 }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    const sb = supabaseRef.current;
-    if (!sb) return;
-    sb.from(SESSION_TABLE)
+    if (!supabase) return;
+    supabase.from(SESSION_TABLE)
       .select('id, prompt_title, status, created_at, completed_at')
       .or('deleted_by_user.is.null,deleted_by_user.eq.false')
       .order('created_at', { ascending: false })
       .limit(100)
       .then(({ data }) => setSessions((data as Session[]) ?? []))
       .catch(console.warn);
-  }, [refreshKey]);
+  }, [refreshKey, supabase]);
 
   if (collapsed) {
     return (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type Dispatch, type SetStateAction } from 'react';
 import { AppShell, ChatPanel, ReportViewer, DownloadBar, useJobStatus } from '@boriskulakhmetov-aidigital/design-system';
 import type { AppShellContext, SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
 import { createClient } from '@supabase/supabase-js';
@@ -37,7 +37,7 @@ export default function App() {
     onDeleteSession: () => {},
   });
 
-  const supabaseRef = useRef<SupabaseClient | null>(null);
+  const [sidebarSupabase, setSidebarSupabase] = useState<SupabaseClient | null>(null);
 
   return (
     <AppShell
@@ -54,7 +54,7 @@ export default function App() {
           onSelectSession={(id) => handlersRef.current.onSelectSession(id)}
           onNewSession={() => handlersRef.current.onNewSession()}
           onDeleteSession={(id) => handlersRef.current.onDeleteSession(id)}
-          supabaseRef={supabaseRef}
+          supabase={sidebarSupabase}
         />
       }
     >
@@ -70,7 +70,7 @@ export default function App() {
           sidebarRefreshKey={sidebarRefreshKey}
           setSidebarRefreshKey={setSidebarRefreshKey}
           handlersRef={handlersRef}
-          supabaseRef={supabaseRef}
+          setSidebarSupabase={setSidebarSupabase}
         />
       )}
     </AppShell>
@@ -94,7 +94,7 @@ interface AppContentProps {
     onNewSession: () => void;
     onDeleteSession: (id: string) => void;
   }>;
-  supabaseRef: React.MutableRefObject<SupabaseClient | null>;
+  setSidebarSupabase: Dispatch<SetStateAction<SupabaseClient | null>>;
 }
 
 function AppContent({
@@ -102,7 +102,7 @@ function AppContent({
   jobId, setJobId,
   loadingSessionId, setLoadingSessionId,
   sidebarRefreshKey, setSidebarRefreshKey,
-  handlersRef, supabaseRef,
+  handlersRef, setSidebarSupabase,
 }: AppContentProps) {
   const [phase, setPhase]                 = useState<AppPhase>('chat');
   const [submission, setSubmission]       = useState<PromptSubmission | null>(null);
@@ -113,8 +113,8 @@ function AppContent({
   const [isRefinement, setIsRefinement]   = useState(false);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
-  // Expose supabase to sidebar via ref bridge
-  supabaseRef.current = supabase;
+  // Expose supabase to sidebar via state bridge (triggers re-render)
+  useEffect(() => { setSidebarSupabase(supabase); }, [supabase, setSidebarSupabase]);
 
   async function handlePipelineDispatch(sub: PromptSubmission, sessionId: string, messages: ChatMessage[]) {
     setSubmission(sub);
