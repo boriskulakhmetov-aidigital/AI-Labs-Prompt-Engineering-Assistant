@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import '@boriskulakhmetov-aidigital/design-system/style.css';
-import { applyTheme, aiLabsTheme } from '@boriskulakhmetov-aidigital/design-system';
+import { applyTheme, resolveTheme } from '@boriskulakhmetov-aidigital/design-system';
 import { ClerkProvider } from '@clerk/react';
 import App from './App';
 import { PublicReportPage } from './pages/PublicReportPage';
@@ -11,7 +11,7 @@ const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
 const isPublicReport = window.location.pathname.startsWith('/r/');
 
-applyTheme(aiLabsTheme);
+applyTheme(resolveTheme());
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
