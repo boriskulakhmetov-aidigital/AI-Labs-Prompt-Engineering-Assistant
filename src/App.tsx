@@ -46,6 +46,7 @@ export default function App() {
       detailEndpoint="get-session"
       auth={{ SignIn, UserButton, useAuth }}
       supabaseConfig={supabaseConfig}
+      helpUrl="/help"
       sidebar={
         <SessionSidebar
           refreshKey={sidebarRefreshKey}

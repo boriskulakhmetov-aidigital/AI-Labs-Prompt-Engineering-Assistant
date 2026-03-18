@@ -10,17 +10,26 @@ import './index.css';
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
 const isPublicReport = window.location.pathname.startsWith('/r/');
+const isHelpPage = window.location.pathname === '/help';
 
 applyTheme(resolveTheme());
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    {isPublicReport ? (
-      <PublicReportPage />
-    ) : (
-      <ClerkProvider publishableKey={publishableKey}>
-        <App />
-      </ClerkProvider>
-    )}
-  </React.StrictMode>
-);
+if (isHelpPage) {
+  import('./pages/HelpPage').then(({ default: Help }) => {
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      <React.StrictMode><Help /></React.StrictMode>
+    );
+  });
+} else {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      {isPublicReport ? (
+        <PublicReportPage />
+      ) : (
+        <ClerkProvider publishableKey={publishableKey}>
+          <App />
+        </ClerkProvider>
+      )}
+    </React.StrictMode>
+  );
+}
