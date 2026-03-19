@@ -88,21 +88,23 @@ export default async (req: Request) => {
     updated_at: new Date().toISOString(),
   });
 
-  // Fire-and-forget to the pipeline-runner-background function
-  const baseUrl = new URL(req.url).origin;
-  fetch(`${baseUrl}/.netlify/functions/pipeline-runner-background`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': req.headers.get('X-API-Key') || '',
-    },
-    body: JSON.stringify({
-      submission,
-      jobId,
-      userId: `api:${auth.keyId}`,
-      messages: [],
-    }),
-  }).catch(() => {/* fire-and-forget */});
+  // Kick off the background pipeline (awaited so the request actually completes)
+  const siteUrl = process.env.URL || new URL(req.url).origin;
+  try {
+    await fetch(`${siteUrl}/.netlify/functions/pipeline-runner-background`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': req.headers.get('X-API-Key') || '',
+      },
+      body: JSON.stringify({
+        submission,
+        jobId,
+        userId: `api:${auth.keyId}`,
+        messages: [],
+      }),
+    });
+  } catch { /* Non-fatal */ }
 
   // Log the API request
   await logApiRequest(supabase as any, {
