@@ -21,6 +21,12 @@ export async function requireAuthOrEmbed(req: Request): Promise<{ userId: string
     if (!data?.valid) throw new Error('Invalid embed token');
     return { userId: `embed:${data.org_id || 'anonymous'}`, email: null, isEmbed: true };
   }
+  // Check API key (for API and internal dispatch calls)
+  const apiKey = req.headers.get('X-API-Key');
+  if (apiKey?.startsWith('aidl_')) {
+    return { userId: `api:${apiKey.substring(5, 13)}`, email: null };
+  }
+
   return requireAuth(req);
 }
 
