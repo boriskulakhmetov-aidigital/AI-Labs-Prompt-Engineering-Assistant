@@ -46,8 +46,8 @@ export default async (req: Request) => {
   }
 
   // Use same ID for session and job — visualizer writes report_data by jobId
-  const jobId = sessionId;
   const sessionId = crypto.randomUUID();
+  const jobId = sessionId;
 
   const needsDesign = !prompt_text;
   const submission = {

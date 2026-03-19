@@ -11,66 +11,66 @@ const supabase = supabaseUrl && supabaseAnonKey
   : null;
 
 export function PublicReportPage() {
+  const token = window.location.pathname.replace(/^\/r\//, '').split('/')[0];
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [report, setReport] = useState<string | null>(null);
   const [title, setTitle] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    const token = window.location.pathname.replace('/r/', '');
-    if (!token || !supabase) { setError('Invalid link'); return; }
+    if (!token || !supabase) { setState('error'); setErrorMsg('Invalid link'); return; }
 
     supabase
       .from(SESSION_TABLE)
-      .select('prompt_title, report, report_data, is_public, submission')
+      .select('prompt_title, report, report_data, is_public')
       .eq('share_token', token)
-      .maybeSingle()
+      .eq('is_public', true)
+      .single()
       .then(({ data, error: err }) => {
-        if (err || !data || !data.is_public) {
-          setError('Report not found or not public');
+        if (err || !data) {
+          setErrorMsg('This report is private or no longer available.');
+          setState('error');
           return;
         }
         if (!data.report && !data.report_data) {
-          setError('Report not ready yet');
+          setErrorMsg('Report not ready yet.');
+          setState('error');
           return;
         }
-        setReport(data.report ?? '');
+        setReport(data.report || '');
         setTitle(data.prompt_title ?? 'Prompt Analysis');
-      })
-      .catch(() => setError('Report not found or not public'));
-  }, []);
+        setState('ready');
+      });
+  }, [token]);
 
-  if (error) {
+  if (state === 'loading') {
     return (
-      <div className="public-report-page">
-        <div className="public-report-page__header">
-          <BrandMark size={24} />
-          <span>AI Labs — Prompt Engineering Assistant</span>
+      <div className="auth-gate">
+        <div className="auth-gate__brand">
+          <span className="app-header__dot" />
+          Loading Report...
         </div>
-        <div className="public-report-page__error">{error}</div>
       </div>
     );
   }
 
-  if (!report) {
+  if (state === 'error') {
     return (
-      <div className="public-report-page">
-        <div className="public-report-page__header">
-          <BrandMark size={24} />
-          <span>AI Labs — Prompt Engineering Assistant</span>
-        </div>
-        <div className="public-report-page__loading">Loading report...</div>
+      <div className="status-page">
+        <div className="status-page__icon">🔒</div>
+        <h2>Report Unavailable</h2>
+        <p>{errorMsg || 'This report is private or no longer available.'}</p>
       </div>
     );
   }
 
-  return (
-    <div className="public-report-page">
-      <div className="public-report-page__header">
-        <BrandMark size={24} />
-        <span>AI Labs — Prompt Engineering Assistant</span>
-        <span className="public-report-page__title">{title}</span>
+  if (report) {
+    return (
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
+        <ReportViewer reportText={report} />
       </div>
-      <ReportViewer reportText={report} />
-    </div>
-  );
+    );
+  }
+
+  return null;
 }
