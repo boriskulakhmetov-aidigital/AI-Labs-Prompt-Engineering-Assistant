@@ -45,7 +45,8 @@ export default async (req: Request) => {
     return Response.json({ error: 'Either prompt_text or prompt_idea is required' }, { status: 400 });
   }
 
-  const jobId = crypto.randomUUID();
+  // Use same ID for session and job — visualizer writes report_data by jobId
+  const jobId = sessionId;
   const sessionId = crypto.randomUUID();
 
   const needsDesign = !prompt_text;
