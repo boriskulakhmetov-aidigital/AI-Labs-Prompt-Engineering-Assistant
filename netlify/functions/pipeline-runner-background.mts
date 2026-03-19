@@ -48,7 +48,7 @@ export default async (req: Request) => {
   await setStatus({ status: 'pending', stage: 'Initializing pipeline...', startedAt: Date.now() });
 
   // ── Tier-based access control ──────────────────────────────────────────────
-  if (userId) {
+  if (userId && !userId.startsWith('api:')) {
     const access = await enforceAccess(userId, 'prompt-engineering');
     if (!access.allowed) {
       await setStatus({ status: 'error', error: access.reason ?? 'Access denied', failedAt: Date.now() });
