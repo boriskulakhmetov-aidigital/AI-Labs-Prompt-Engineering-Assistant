@@ -21,6 +21,28 @@
   to   = "/index.html"
   status = 200
 
+[[redirects]]
+  from = "/api/v1/submit"
+  to = "/.netlify/functions/api-submit"
+  status = 200
+
+[[redirects]]
+  from = "/api/v1/status/:job_id"
+  to = "/.netlify/functions/api-status?job_id=:job_id"
+  status = 200
+
+[[redirects]]
+  from = "/api/v1/result/:job_id"
+  to = "/.netlify/functions/api-result?job_id=:job_id"
+  status = 200
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "X-API-Key, Content-Type"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+
 [[headers]]
   for = "/*"
   [headers.values]
