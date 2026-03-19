@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getUserStatus } from './supabase.js';
 import { log } from './logger.js';
 
-const EMBED_APP_NAME = 'prompt-engineer';
+const EMBED_APP_NAME = 'prompt-engineering';
 
 /** Authenticate via Clerk JWT or embed token. */
 export async function requireAuthOrEmbed(req: Request): Promise<{ userId: string; email: string | null; isEmbed?: boolean }> {

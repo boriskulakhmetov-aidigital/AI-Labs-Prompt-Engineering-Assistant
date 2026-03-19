@@ -9,7 +9,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { PromptSubmission } from '../lib/types'
 import { ProgressIndicator } from '../components/ProgressIndicator'
 
-const APP_NAME = 'prompt-engineer'
+const APP_NAME = 'prompt-engineering'
 const APP_TITLE = 'Prompt Engineering'
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
