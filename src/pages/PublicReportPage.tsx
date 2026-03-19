@@ -29,6 +29,10 @@ export function PublicReportPage() {
           setError('Report not found or not public');
           return;
         }
+        if (!data.report && !data.report_data) {
+          setError('Report not ready yet');
+          return;
+        }
         setReport(data.report ?? '');
         setTitle(data.prompt_title ?? 'Prompt Analysis');
       })

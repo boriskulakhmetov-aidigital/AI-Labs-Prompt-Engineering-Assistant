@@ -41,10 +41,10 @@ export default async (req: Request) => {
     return Response.json({ error: 'job_id is required' }, { status: 400 });
   }
 
-  // Check job status first
+  // Check job status first (also grab report from job_status as fallback)
   const { data: job } = await supabase
     .from('job_status')
-    .select('id, status, meta')
+    .select('id, status, meta, report')
     .eq('id', jobId)
     .eq('app', APP_NAME)
     .maybeSingle();
@@ -74,6 +74,17 @@ export default async (req: Request) => {
 
   if (!session) {
     return Response.json({ error: 'Session not found' }, { status: 404 });
+  }
+
+  // Use job_status.report as fallback if session doesn't have it
+  const markdownReport = session.report || (job as any).report || '';
+  const visualReport = session.report_data || null;
+
+  // If session is missing the report, copy it over so the public share link works
+  if (!session.report && markdownReport) {
+    await supabase.from('pe_sessions')
+      .update({ report: markdownReport, status: 'complete', updated_at: new Date().toISOString() })
+      .eq('id', sessionId);
   }
 
   // Auto-generate share link for API consumers
@@ -114,7 +125,7 @@ export default async (req: Request) => {
   if (format === 'markdown') {
     return Response.json({
       job_id: jobId,
-      markdown_report: session.report,
+      markdown_report: markdownReport,
       report_url: reportUrl,
     });
   }
@@ -122,7 +133,7 @@ export default async (req: Request) => {
   if (format === 'visual') {
     return Response.json({
       job_id: jobId,
-      visual_report: session.report_data,
+      visual_report: visualReport,
       report_url: reportUrl,
     });
   }
@@ -133,9 +144,9 @@ export default async (req: Request) => {
     status: 'complete',
     prompt_title: session.prompt_title,
     submission: session.submission,
-    has_visual_report: !!session.report_data,
-    markdown_report: session.report,
-    visual_report: session.report_data || null,
+    has_visual_report: !!visualReport,
+    markdown_report: markdownReport,
+    visual_report: visualReport || null,
     completed_at: session.completed_at,
     report_url: reportUrl,
   });
