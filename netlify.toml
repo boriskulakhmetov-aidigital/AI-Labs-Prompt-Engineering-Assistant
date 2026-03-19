@@ -7,6 +7,11 @@
   node_bundler = "esbuild"
 
 [[redirects]]
+  from = "/embed"
+  to   = "/index.html"
+  status = 200
+
+[[redirects]]
   from = "/help"
   to   = "/index.html"
   status = 200
@@ -27,3 +32,8 @@
   for = "/r/*"
   [headers.values]
     X-Frame-Options = "SAMEORIGIN"
+
+[[headers]]
+  for = "/embed"
+  [headers.values]
+    X-Frame-Options = "ALLOWALL"
