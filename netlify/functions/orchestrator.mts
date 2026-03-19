@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { ORCHESTRATOR_SYSTEM_PROMPT } from './_shared/orchestratorPrompt.js';
-import { requireAuth } from './_shared/auth.js';
+import { requireAuthOrEmbed } from './_shared/auth.js';
 import { log } from './_shared/logger.js';
 
 const DISPATCH_PIPELINE_TOOL = {
@@ -52,7 +52,7 @@ export default async (req: Request) => {
   }
 
   try {
-    await requireAuth(req);
+    await requireAuthOrEmbed(req);
   } catch {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
