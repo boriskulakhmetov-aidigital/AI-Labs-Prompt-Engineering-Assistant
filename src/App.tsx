@@ -21,7 +21,7 @@ const supabaseConfig = import.meta.env.VITE_SUPABASE_URL ? {
 } : undefined;
 
 export default function App() {
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth();
 
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -64,6 +64,7 @@ export default function App() {
           authFetch={authFetch}
           supabase={supabase}
           userId={userId}
+          getToken={getToken}
           jobId={jobId}
           setJobId={setJobId}
           loadingSessionId={loadingSessionId}
@@ -84,6 +85,7 @@ interface AppContentProps {
   authFetch: AuthFetch;
   supabase: SupabaseClient | null;
   userId: string | null | undefined;
+  getToken: () => Promise<string | null>;
   jobId: string | null;
   setJobId: (id: string | null) => void;
   loadingSessionId: string | null;
@@ -99,7 +101,7 @@ interface AppContentProps {
 }
 
 function AppContent({
-  authFetch, supabase, userId,
+  authFetch, supabase, userId, getToken,
   jobId, setJobId,
   loadingSessionId, setLoadingSessionId,
   sidebarRefreshKey, setSidebarRefreshKey,
@@ -127,9 +129,13 @@ function AppContent({
     setEngineeredPrompt(null);
     setSidebarRefreshKey(k => k + 1);
 
+    const token = await getToken();
     await fetch('/.netlify/functions/pipeline-runner-background', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         submission: { ...sub, iteration: 1 },
         jobId: sessionId,
@@ -166,9 +172,13 @@ function AppContent({
     setIsRefinement(true);
     setEngineeredPrompt(null);
 
+    const token = await getToken();
     await fetch('/.netlify/functions/pipeline-runner-background', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         submission: refinementSub,
         jobId: newJobId,

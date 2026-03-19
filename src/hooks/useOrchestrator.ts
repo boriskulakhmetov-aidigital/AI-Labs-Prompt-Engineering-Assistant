@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useAuth } from '@clerk/react';
 import { parseSSEStream as parseSSE } from '@boriskulakhmetov-aidigital/design-system';
 import type { ChatMessage, PromptSubmission } from '../lib/types';
 import type { SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
@@ -12,6 +13,7 @@ export function useOrchestrator(
   supabase: SupabaseClient | null,
   onSidebarRefresh?: () => void,
 ) {
+  const { getToken } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,9 +46,13 @@ export function useOrchestrator(
     }
 
     try {
+      const token = await getToken();
       const res = await fetch('/.netlify/functions/orchestrator', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           messages: next.map(m => ({ role: m.role, content: m.content })),
         }),
