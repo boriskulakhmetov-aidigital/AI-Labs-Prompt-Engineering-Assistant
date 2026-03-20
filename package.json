@@ -12,7 +12,7 @@
     "@boriskulakhmetov-aidigital/design-system": "^7.12.0",
     "@clerk/backend": "^3.2.0",
     "@clerk/react": "^6.1.0",
-    "@google/genai": "^0.7.0",
+    "@google/genai": "^1.46.0",
     "@supabase/supabase-js": "^2.99.2",
     "html2pdf.js": "^0.14.0",
     "marked": "^12.0.0",
