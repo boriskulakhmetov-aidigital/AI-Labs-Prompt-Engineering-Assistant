@@ -25,6 +25,11 @@ export default async (req: Request) => {
   const iteration = submission.iteration ?? 1;
   const isRefinement = !!submission.refinement_request && !!submission.base_prompt;
 
+  // Read existing meta to preserve session_id, source, key_id from api-submit
+  const { data: existingJob } = await supabase.from('job_status')
+    .select('meta').eq('id', jobId).maybeSingle();
+  const baseMeta = (existingJob?.meta as Record<string, unknown>) ?? {};
+
   const setStatus = async (s: PipelineJobStatus) => {
     await supabase.from('job_status').upsert({
       id: jobId,
@@ -34,6 +39,7 @@ export default async (req: Request) => {
       report: s.report ?? null,
       error: s.error ?? null,
       meta: {
+        ...baseMeta,
         iteration,
         designedPrompt: s.designedPrompt,
         testResults: s.testResults,
