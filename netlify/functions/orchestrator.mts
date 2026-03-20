@@ -87,10 +87,10 @@ export default async (req: Request) => {
 
       try {
         log.info('orchestrator.start', { function_name: 'orchestrator' });
-        const timer = log.time('gemini.call', { function_name: 'orchestrator', ai_provider: 'gemini', ai_model: 'gemini-3-flash-preview' });
+        const timer = log.time('gemini.call', { function_name: 'orchestrator', ai_provider: 'gemini', ai_model: 'gemini-3.0-flash' });
 
         const stream = await ai.models.generateContentStream({
-          model: 'gemini-3-flash-preview',
+          model: 'gemini-3.0-flash',
           contents,
           config: {
             systemInstruction: ORCHESTRATOR_SYSTEM_PROMPT,
