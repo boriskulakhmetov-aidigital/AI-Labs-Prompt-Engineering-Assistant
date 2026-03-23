@@ -2,6 +2,8 @@ import { GoogleGenAI } from '@google/genai';
 import { ORCHESTRATOR_SYSTEM_PROMPT } from './_shared/orchestratorPrompt.js';
 import { requireAuthOrEmbed } from './_shared/auth.js';
 import { log } from './_shared/logger.js';
+import { trackTokens } from './_shared/access.js';
+import { extractGeminiTokens } from '@boriskulakhmetov-aidigital/design-system/utils';
 
 const DISPATCH_PIPELINE_TOOL = {
   name: 'dispatch_pipeline',
@@ -62,7 +64,7 @@ export default async (req: Request) => {
   }
 
   const body = await req.json();
-  const { messages = [] } = body;
+  const { messages = [], userId } = body;
 
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -99,7 +101,9 @@ export default async (req: Request) => {
           },
         });
 
+        let lastChunk: any = null;
         for await (const chunk of stream) {
+          lastChunk = chunk;
           if (chunk.text) {
             emit({ type: 'text_delta', text: chunk.text });
           }
@@ -113,7 +117,9 @@ export default async (req: Request) => {
           }
         }
 
-        timer.end();
+        const tokens = extractGeminiTokens(lastChunk ?? {});
+        timer.end({ ai_input_tokens: tokens.inputTokens, ai_output_tokens: tokens.outputTokens, ai_total_tokens: tokens.totalTokens });
+        trackTokens(userId, 'prompt-engineering', 'gemini', 'gemini-3-flash-preview', tokens.inputTokens, tokens.outputTokens, tokens.totalTokens);
         emit({ type: 'done' });
       } catch (err) {
         console.error('Orchestrator error:', err);
