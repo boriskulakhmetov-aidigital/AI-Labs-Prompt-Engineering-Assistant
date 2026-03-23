@@ -144,6 +144,7 @@ export default async (req: Request) => {
     status: 'complete',
     prompt_title: session.prompt_title,
     submission: session.submission,
+    intake_summary: session.submission,  // standard alias
     has_visual_report: !!visualReport,
     markdown_report: markdownReport,
     visual_report: visualReport || null,
