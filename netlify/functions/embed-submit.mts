@@ -106,6 +106,10 @@ export default async (req: Request) => {
     return Response.json({ error: 'Failed to enqueue task' }, { status: 500 });
   }
 
+  // Immediately notify task-worker (fire-and-forget — poller is backup)
+  const siteUrl = process.env.URL || 'https://prompt-engineer.apps.aidigitallabs.com';
+  fetch(`${siteUrl}/.netlify/functions/task-worker`, { method: 'POST' }).catch(() => {});
+
   console.log(`[embed-submit] Task enqueued: run_pipeline for session ${jobId}`);
 
   return Response.json({ job_id: jobId, status: 'pending' }, { status: 202 });
