@@ -33,7 +33,7 @@ export default async (req: Request) => {
   }
 
   // Parse body
-  let body: Record<string, string>;
+  let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
@@ -70,8 +70,8 @@ export default async (req: Request) => {
   // Create session
   await supabase.from('pe_sessions').insert({
     id: sessionId,
-    user_id: `api:${auth.keyId}`,
-    user_email: null,
+    user_id: (body._dispatched_by_user as string) || `api:${auth.keyId}`,
+    user_email: (body._dispatched_by_email as string) || null,
     prompt_title: promptTitle,
     submission,
     status: 'pending',
@@ -100,7 +100,8 @@ export default async (req: Request) => {
       body: JSON.stringify({
         submission,
         jobId,
-        userId: `api:${auth.keyId}`,
+        userId: (body._dispatched_by_user as string) || `api:${auth.keyId}`,
+        userEmail: (body._dispatched_by_email as string) || undefined,
         messages: [],
       }),
     });
