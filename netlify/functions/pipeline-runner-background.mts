@@ -14,14 +14,17 @@ import { log } from './_shared/logger.js';
 export const config: Config = { background: true };
 
 export default async (req: Request) => {
+  let authEmail: string | null = null;
   try {
-    await requireAuthOrEmbed(req);
+    const auth = await requireAuthOrEmbed(req);
+    authEmail = auth.email;
   } catch {
     return new Response('Unauthorized', { status: 401 });
   }
 
   const body: PipelineJobRequest = await req.json();
   const { submission, jobId, userId, messages } = body;
+  const userEmail = authEmail ?? body.userEmail ?? undefined;
 
   const iteration = submission.iteration ?? 1;
   const isRefinement = !!submission.refinement_request && !!submission.base_prompt;
@@ -66,7 +69,7 @@ export default async (req: Request) => {
 
   const ai_model = 'gemini-3.1-pro-preview';
   const startTime = Date.now();
-  log.info('pipeline.start', { function_name: 'pipeline-runner-background', entity_type: 'session', entity_id: jobId, user_id: userId, correlation_id: jobId, ai_provider: 'gemini', ai_model });
+  log.info('pipeline.start', { function_name: 'pipeline-runner-background', entity_type: 'session', entity_id: jobId, user_id: userId, user_email: userEmail, correlation_id: jobId, ai_provider: 'gemini', ai_model });
 
   try {
     if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
@@ -311,12 +314,12 @@ Analyze the prompt's performance across these three test runs and produce your s
     if (userId) trackTokens(userId, 'prompt-engineering', 'gemini', ai_model, totalInputTokens, totalOutputTokens, totalAllTokens);
 
     const duration_ms = Date.now() - startTime;
-    log.info('pipeline.complete', { function_name: 'pipeline-runner-background', entity_type: 'session', entity_id: jobId, user_id: userId, correlation_id: jobId, ai_provider: 'gemini', ai_model, duration_ms, ai_input_tokens: totalInputTokens, ai_output_tokens: totalOutputTokens, ai_total_tokens: totalAllTokens });
+    log.info('pipeline.complete', { function_name: 'pipeline-runner-background', entity_type: 'session', entity_id: jobId, user_id: userId, user_email: userEmail, correlation_id: jobId, ai_provider: 'gemini', ai_model, duration_ms, ai_input_tokens: totalInputTokens, ai_output_tokens: totalOutputTokens, ai_total_tokens: totalAllTokens });
 
   } catch (err) {
     console.error('Pipeline runner error:', err);
     const duration_ms = Date.now() - startTime;
-    log.error('pipeline.error', { function_name: 'pipeline-runner-background', entity_type: 'session', entity_id: jobId, user_id: userId, correlation_id: jobId, error: err, error_category: 'gemini_api', duration_ms });
+    log.error('pipeline.error', { function_name: 'pipeline-runner-background', entity_type: 'session', entity_id: jobId, user_id: userId, user_email: userEmail, correlation_id: jobId, error: err, error_category: 'gemini_api', duration_ms });
     await setStatus({
       status: 'error',
       error: String(err),

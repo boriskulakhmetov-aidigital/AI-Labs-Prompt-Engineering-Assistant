@@ -91,6 +91,7 @@ export default async (req: Request) => {
       submission,
       jobId,
       userId: userId || 'embed:anonymous',
+      userEmail: undefined,
       messages: messages || [],
     },
   });

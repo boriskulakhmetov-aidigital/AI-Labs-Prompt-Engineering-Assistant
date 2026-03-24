@@ -17,6 +17,7 @@ export interface PipelineJobRequest {
   submission: PromptSubmission;
   jobId: string;
   userId?: string;
+  userEmail?: string;
   messages?: Array<{ role: string; content: string }>;
 }
 
