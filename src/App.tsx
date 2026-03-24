@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
-import { AppShell, ChatPanel, ReportViewer, DownloadBar, useJobStatus } from '@boriskulakhmetov-aidigital/design-system';
+import { AppShell, ChatPanel, ReportViewer, DownloadBar, ConnectedShareBar, useJobStatus } from '@boriskulakhmetov-aidigital/design-system';
 import type { AppShellContext, SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
 import { createClient } from '@supabase/supabase-js';
 import { SignIn, UserButton, useAuth } from '@clerk/react';
@@ -318,13 +318,22 @@ function AppContent({
       )}
       {phase === 'report_ready' && displayReport && (
         <div className="report-page">
-          <DownloadBar
-            reportText={displayReport}
-            title={displayTitle}
-          />
-          <button className="btn-primary btn-sm" onClick={handleNewSession}>
-            New Analysis
-          </button>
+          <div className="report-bar">
+            <DownloadBar
+              reportText={displayReport}
+              title={displayTitle}
+            />
+            {supabase && jobId && (
+              <ConnectedShareBar
+                jobId={jobId}
+                supabase={supabase}
+                tableName="pe_sessions"
+              />
+            )}
+            <button className="btn-primary btn-sm" onClick={handleNewSession}>
+              New Analysis
+            </button>
+          </div>
           <ReportViewer reportText={displayReport} />
           <RefinementInput
             onSubmit={handleRefinement}
