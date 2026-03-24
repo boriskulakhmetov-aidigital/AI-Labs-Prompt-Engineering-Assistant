@@ -47,7 +47,7 @@ export async function runPipeline(body: PipelineJobRequest): Promise<void> {
   await setStatus({ status: 'pending', stage: 'Initializing pipeline...', startedAt: Date.now() });
 
   // ── Tier-based access control ──────────────────────────────────────────────
-  if (userId && !userId.startsWith('api:')) {
+  if (userId && !userId.startsWith('api:') && !userId.startsWith('embed:')) {
     const access = await enforceAccess(userId, 'prompt-engineering');
     if (!access.allowed) {
       await setStatus({ status: 'error', error: access.reason ?? 'Access denied', failedAt: Date.now() });
