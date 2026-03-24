@@ -94,6 +94,7 @@ export default async (req: Request) => {
 
   await supabase.from('pipeline_tasks').insert({
     scan_id: jobId,
+    app: 'prompt-engineering',
     task_type: 'run_pipeline',
     payload: {
       submission,
