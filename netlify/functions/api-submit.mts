@@ -88,24 +88,21 @@ export default async (req: Request) => {
     updated_at: new Date().toISOString(),
   });
 
-  // Kick off the background pipeline (awaited so the request actually completes)
-  const siteUrl = process.env.URL || new URL(req.url).origin;
-  try {
-    await fetch(`${siteUrl}/.netlify/functions/pipeline-runner-background`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': req.headers.get('X-API-Key') || '',
-      },
-      body: JSON.stringify({
-        submission,
-        jobId,
-        userId: (body._dispatched_by_user as string) || `api:${auth.keyId}`,
-        userEmail: (body._dispatched_by_email as string) || undefined,
-        messages: [],
-      }),
-    });
-  } catch { /* Non-fatal */ }
+  // Enqueue pipeline task — task-worker (cron) picks it up
+  const effectiveUserId = (body._dispatched_by_user as string) || `api:${auth.keyId}`;
+  const effectiveEmail = (body._dispatched_by_email as string) || undefined;
+
+  await supabase.from('pipeline_tasks').insert({
+    scan_id: jobId,
+    task_type: 'run_pipeline',
+    payload: {
+      submission,
+      jobId,
+      userId: effectiveUserId,
+      userEmail: effectiveEmail,
+      messages: [],
+    },
+  });
 
   // Log the API request
   await logApiRequest(supabase as any, {
