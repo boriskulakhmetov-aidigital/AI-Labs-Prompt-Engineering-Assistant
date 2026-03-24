@@ -14,7 +14,7 @@ function getSupabase() {
 export default async (req: Request) => {
   const supabase = getSupabase();
 
-  const { data: tasks, error } = await supabase.rpc('claim_task');
+  const { data: tasks, error } = await supabase.rpc('claim_task', { p_app: 'prompt-engineering' });
   if (error || !tasks?.length) {
     return Response.json({ status: 'idle' });
   }
