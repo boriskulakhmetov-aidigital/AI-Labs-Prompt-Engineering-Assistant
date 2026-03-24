@@ -12,14 +12,7 @@ import type { PipelineJobRequest, PipelineJobStatus } from './types.js';
 import { log } from './logger.js';
 
 
-export async function runPipeline(body: any): Promise<void> {
-  try {
-    await requireAuthOrEmbed(req);
-  } catch {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  const body: PipelineJobRequest = await req.json();
+export async function runPipeline(body: PipelineJobRequest): Promise<void> {
   const { submission, jobId, userId, messages } = body;
 
   const iteration = submission.iteration ?? 1;
