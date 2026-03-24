@@ -68,7 +68,7 @@ export default function EmbedPage({ token, theme }: Props) {
     setPastReport(null)
     setPhase('pipeline_running')
 
-    await fetch('/.netlify/functions/pipeline-runner-background', {
+    await fetch('/.netlify/functions/embed-submit', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
