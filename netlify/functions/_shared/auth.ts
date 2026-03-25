@@ -27,6 +27,12 @@ export async function requireAuthOrEmbed(req: Request): Promise<{ userId: string
     return { userId: `api:${apiKey.substring(5, 13)}`, email: null };
   }
 
+  // Internal task-worker bypass (service role key as proof of internal origin)
+  const internalKey = req.headers.get('X-Internal-Key');
+  if (internalKey && internalKey === process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { userId: 'internal:task-worker', email: null };
+  }
+
   return requireAuth(req);
 }
 

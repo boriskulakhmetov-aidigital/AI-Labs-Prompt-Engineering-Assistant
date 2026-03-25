@@ -1,11 +1,8 @@
 /**
  * Task worker for Prompt Engineering pipeline.
- * Claims and executes tasks from pipeline_tasks table.
- * Task chain: run_pipeline → complete
+ * Claims tasks and dispatches to background function (Pattern B).
  */
 import { createClient } from '@supabase/supabase-js';
-import { log } from './_shared/logger.js';
-import { runPipeline } from './_shared/pipelineRunner.js';
 
 function getSupabase() {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -21,47 +18,43 @@ export default async (req: Request) => {
 
   const task = tasks[0];
   const { id: taskId, scan_id: scanId, task_type: taskType, payload } = task;
+  console.log(`[task-worker] Claimed ${taskType} for ${scanId}`);
 
-  // PE pipeline needs streaming (Gemini Pro calls >26s)
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
-      const send = (msg: string) => { try { controller.enqueue(encoder.encode(`data: ${msg}\n\n`)); } catch {} };
-      const heartbeat = setInterval(() => send('heartbeat'), 10_000);
+  try {
+    const siteUrl = process.env.URL || 'https://prompt-engineer.apps.aidigitallabs.com';
 
-      try {
-        if (taskType === 'run_pipeline') {
-          send('pipeline starting');
-          await runPipeline(payload);
-          send('pipeline complete');
-        } else {
-          throw new Error(`Unknown task type: ${taskType}`);
-        }
-
-        await supabase.from('pipeline_tasks').update({ status: 'complete', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', taskId);
-        send('done');
-      } catch (err: any) {
-        send(`error: ${err.message}`);
-        const willRetry = task.attempts < task.max_attempts;
-        await supabase.from('pipeline_tasks').update({
-          status: willRetry ? 'pending' : 'failed',
-          error: err.message?.slice(0, 500),
-          updated_at: new Date().toISOString(),
-        }).eq('id', taskId);
-
-        if (!willRetry) {
-          await supabase.from('job_status').upsert({
-            id: scanId, app: 'prompt-engineering', status: 'error',
-            error: `Pipeline failed: ${err.message?.slice(0, 200)}`,
-            updated_at: new Date().toISOString(),
-          });
-        }
-      } finally {
-        clearInterval(heartbeat);
-        controller.close();
+    if (taskType === 'run_pipeline') {
+      // Dispatch to background function (15-min timeout for Gemini Pro calls)
+      const res = await fetch(`${siteUrl}/.netlify/functions/pipeline-runner-background`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Task-Id': taskId,
+          'X-Internal-Key': process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok && res.status !== 202) {
+        throw new Error(`pipeline-runner-background dispatch failed: ${res.status}`);
       }
-    },
-  });
+      console.log(`[task-worker] Dispatched pipeline-runner-background: ${res.status}`);
+    } else {
+      throw new Error(`Unknown task type: ${taskType}`);
+    }
 
-  return new Response(stream, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } });
+    await supabase.from('pipeline_tasks').update({
+      status: 'complete', completed_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    }).eq('id', taskId);
+
+    return Response.json({ status: 'ok', taskType, scanId });
+  } catch (err: any) {
+    console.error(`[task-worker] ${taskType} failed:`, err.message);
+    const willRetry = task.attempts < task.max_attempts;
+    await supabase.from('pipeline_tasks').update({
+      status: willRetry ? 'pending' : 'failed',
+      error: err.message?.slice(0, 500),
+      updated_at: new Date().toISOString(),
+    }).eq('id', taskId);
+    return Response.json({ status: 'error', taskType, error: err.message });
+  }
 };
