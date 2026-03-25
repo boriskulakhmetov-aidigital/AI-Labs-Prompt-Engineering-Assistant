@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { BrandMark, ReportViewer } from '@boriskulakhmetov-aidigital/design-system';
+import { useState, useEffect, useRef } from 'react';
+import { BrandMark, ReportViewer, downloadVisualPDF } from '@boriskulakhmetov-aidigital/design-system';
 import { createClient } from '@supabase/supabase-js';
 
 const SESSION_TABLE = 'pe_sessions';
@@ -16,6 +16,7 @@ export function PublicReportPage() {
   const [report, setReport] = useState<string | null>(null);
   const [title, setTitle] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState('');
+  const autoPdfTriggered = useRef(false);
 
   useEffect(() => {
     if (!token || !supabase) { setState('error'); setErrorMsg('Invalid link'); return; }
@@ -42,6 +43,45 @@ export function PublicReportPage() {
         setState('ready');
       });
   }, [token]);
+
+  // Auto PDF download when ?pdf=1 is in the URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('pdf') === '1' && state === 'ready' && !autoPdfTriggered.current) {
+      autoPdfTriggered.current = true;
+      setTimeout(async () => {
+        try {
+          await downloadVisualPDF('.aidl-report-viewer', title || 'Prompt Analysis');
+        } catch (e) {
+          console.error('Auto PDF failed:', e);
+        }
+      }, 2000);
+    }
+  }, [state, title]);
+
+  // postMessage listener for JobStatusWidget iframe
+  useEffect(() => {
+    function handleMessage(e: MessageEvent) {
+      if (e.data?.type === 'aidl-download-pdf') {
+        downloadVisualPDF('.aidl-report-viewer', title || 'Prompt Analysis').catch(console.error);
+      }
+    }
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [title]);
+
+  // Report height to parent for auto-sizing iframe
+  useEffect(() => {
+    if (window.parent !== window) {
+      const reportHeight = () => {
+        window.parent.postMessage({ type: 'aidl-report-height', height: document.body.scrollHeight }, '*');
+      };
+      reportHeight();
+      const observer = new ResizeObserver(reportHeight);
+      observer.observe(document.body);
+      return () => observer.disconnect();
+    }
+  }, []);
 
   if (state === 'loading') {
     return (
