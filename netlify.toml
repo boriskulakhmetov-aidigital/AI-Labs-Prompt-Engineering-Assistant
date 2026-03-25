@@ -53,7 +53,8 @@
 [[headers]]
   for = "/r/*"
   [headers.values]
-    X-Frame-Options = "SAMEORIGIN"
+    X-Frame-Options = "ALLOWALL"
+    Content-Security-Policy = "frame-ancestors 'self' https://*.apps.aidigitallabs.com https://*.netlify.app"
 
 [[headers]]
   for = "/embed"
