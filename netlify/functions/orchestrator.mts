@@ -91,7 +91,7 @@ export default async (req: Request) => {
 
       try {
         const latestUserMsg = messages?.filter((m: { role: string }) => m.role === 'user').pop()?.content?.slice(0, 500) || '';
-        log.info('orchestrator.start', { function_name: 'orchestrator', user_id: userId, user_email: authEmail, ai_provider: 'gemini', ai_model: 'gemini-3-flash-preview', meta: { messageCount: messages?.length, userMessage: latestUserMsg } });
+        log.info('orchestrator.start', { function_name: 'orchestrator', user_id: userId, user_email: authEmail, ai_provider: 'gemini', ai_model: 'gemini-3-flash-preview', meta: { messageCount: messages?.length, conversation: convoLog } });
         const timer = log.time('gemini.call', { function_name: 'orchestrator', user_id: userId, user_email: authEmail, ai_provider: 'gemini', ai_model: 'gemini-3-flash-preview' });
 
         const stream = await ai.models.generateContentStream({
