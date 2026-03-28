@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
-import { AppShell, ChatPanel, ReportViewer, DownloadBar, ConnectedShareBar, useJobStatus } from '@boriskulakhmetov-aidigital/design-system';
+import { AppShell, ChatPanel, ReportViewer, DownloadBar, ConnectedShareBar, useJobStatus, useSessionPersistence } from '@boriskulakhmetov-aidigital/design-system';
 import type { AppShellContext, SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
 import { createClient } from '@supabase/supabase-js';
 import { SignIn, UserButton, useAuth } from '@clerk/react';
@@ -10,9 +10,6 @@ import { RefinementInput } from './components/RefinementInput';
 import { SessionSidebar } from './components/SessionSidebar';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
-type AuthFetch = (url: string, options?: RequestInit) => Promise<Response>;
-
-const SESSION_TABLE = 'pe_sessions';
 
 const supabaseConfig = import.meta.env.VITE_SUPABASE_URL ? {
   url: import.meta.env.VITE_SUPABASE_URL as string,
@@ -59,9 +56,8 @@ export default function App() {
         />
       }
     >
-      {({ authFetch, supabase }: AppShellContext) => (
+      {({ supabase }: AppShellContext) => (
         <AppContent
-          authFetch={authFetch}
           supabase={supabase}
           userId={userId}
           getToken={getToken}
@@ -82,7 +78,6 @@ export default function App() {
 /* ── Domain-specific content ────────────────────────────────────────────── */
 
 interface AppContentProps {
-  authFetch: AuthFetch;
   supabase: SupabaseClient | null;
   userId: string | null | undefined;
   getToken: () => Promise<string | null>;
@@ -101,7 +96,7 @@ interface AppContentProps {
 }
 
 function AppContent({
-  authFetch, supabase, userId, getToken,
+  supabase, userId, getToken,
   jobId, setJobId,
   loadingSessionId, setLoadingSessionId,
   sidebarRefreshKey, setSidebarRefreshKey,
@@ -116,6 +111,16 @@ function AppContent({
   const [isRefinement, setIsRefinement]   = useState(false);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
 
+  // ── Session persistence (DS hook) ──
+  const session = useSessionPersistence(supabase, null, userId ?? null, {
+    table: 'pe_sessions',
+    app: 'prompt-engineering',
+    titleField: 'prompt_title',
+    mergeConfig: { objectFields: ['submission'] },
+    defaultFields: { status: 'chatting' },
+    mergeEndpoint: '/.netlify/functions/save-session',
+  });
+
   // Expose supabase to sidebar via state bridge (triggers re-render)
   useEffect(() => { setSidebarSupabase(supabase); }, [supabase, setSidebarSupabase]);
 
@@ -127,7 +132,11 @@ function AppContent({
     setIteration(1);
     setIsRefinement(false);
     setEngineeredPrompt(null);
-    setSidebarRefreshKey(k => k + 1);
+
+    // Persist dispatch state via merge
+    const title = (sub.prompt_text ?? sub.prompt_idea ?? '').slice(0, 60) || 'Untitled';
+    session.mergeFields({ status: 'pending', submission: sub, prompt_title: title });
+    session.refreshSessions();
 
     const token = await getToken();
     await fetch('/.netlify/functions/pipeline-runner-background', {
@@ -187,10 +196,8 @@ function AppContent({
     });
   }
 
-  const refreshSidebar = () => setSidebarRefreshKey(k => k + 1);
-
-  const { messages, streaming, error: chatError, sendMessage, reset: resetOrchestrator } =
-    useOrchestrator(handlePipelineDispatch, supabase, refreshSidebar);
+  const { messages, streaming, error: chatError, sendMessage, reset: resetOrchestrator, loadMessages } =
+    useOrchestrator(handlePipelineDispatch, session);
 
   // Realtime job status via Supabase (replaces polling)
   const jobStatus = useJobStatus(supabase, phase === 'pipeline_running' ? jobId : null);
@@ -229,6 +236,7 @@ function AppContent({
     setEngineeredPrompt(null);
     setPipelineError(null);
     resetOrchestrator();
+    session.refreshSessions();
   }
 
   function handleSend(text: string, _asset: unknown) {
@@ -239,24 +247,32 @@ function AppContent({
     if (!supabase) return;
     setLoadingSessionId(id);
     try {
-      const { data: session } = await supabase
-        .from(SESSION_TABLE)
+      // Load session via DS hook (restores messages + all fields)
+      await session.loadSession(id);
+      // Read directly from supabase for immediate access
+      const { data: sessionData } = await supabase
+        .from('pe_sessions')
         .select('*')
         .eq('id', id)
-        .maybeSingle();
-      if (!session) return;
+        .single();
+      if (!sessionData) return;
+      const fields = sessionData as Record<string, unknown>;
 
-      setJobId(session.id);
-      setSubmission(session.submission ?? null);
-      setPastTitle(session.prompt_title ?? '');
-      setIteration(session.submission?.iteration ?? 1);
+      // Restore messages into orchestrator's local ref
+      const msgs = (sessionData.messages || []) as ChatMessage[];
+      loadMessages(msgs);
+
+      setJobId(id);
+      setSubmission((fields.submission as PromptSubmission) ?? null);
+      setPastTitle((fields.prompt_title as string) ?? '');
+      setIteration((fields.submission as PromptSubmission)?.iteration ?? 1);
       setIsRefinement(false);
       setEngineeredPrompt(null);
 
-      if (session.status === 'complete' && session.report) {
-        setPastReport(session.report);
+      if (fields.status === 'complete' && fields.report) {
+        setPastReport(fields.report as string);
         setPhase('report_ready');
-      } else if (session.status === 'pending' || session.status === 'streaming') {
+      } else if (fields.status === 'pending' || fields.status === 'streaming') {
         setPhase('pipeline_running');
       } else {
         setPhase('chat');
@@ -269,16 +285,8 @@ function AppContent({
   }
 
   async function handleDeleteSession(id: string) {
-    if (supabase) {
-      supabase
-        .from(SESSION_TABLE)
-        .update({ deleted_by_user: true })
-        .eq('id', id)
-        .then(() => {})
-        .catch(console.warn);
-    }
+    await session.deleteSession(id);
     if (jobId === id) handleNewSession();
-    setSidebarRefreshKey(k => k + 1);
   }
 
   // Expose handlers to sidebar via ref bridge

@@ -91,6 +91,7 @@ export default async (req: Request) => {
 
       try {
         
+        const convoLog = messages.map((m: { role: string; content: string }) => `${m.role}: ${m.content.slice(0, 200)}`).join('\n');
         log.info('orchestrator.start', { function_name: 'orchestrator', user_id: userId, user_email: authEmail, ai_provider: 'gemini', ai_model: 'gemini-3-flash-preview', meta: { messageCount: messages?.length, conversation: convoLog } });
         const timer = log.time('gemini.call', { function_name: 'orchestrator', user_id: userId, user_email: authEmail, ai_provider: 'gemini', ai_model: 'gemini-3-flash-preview' });
 
