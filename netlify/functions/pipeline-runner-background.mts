@@ -4,7 +4,7 @@ import { PROMPT_DESIGN_SYSTEM_PROMPT, PROMPT_REVISION_SYSTEM_PROMPT } from './_s
 import { PROMPT_TESTER_SYSTEM_PROMPT } from './_shared/promptTesterPrompt.js';
 import { PROMPT_ENGINEER_SYSTEM_PROMPT } from './_shared/promptEngineerPrompt.js';
 import { TEST_INPUT_GENERATOR_PROMPT } from './_shared/testInputPrompt.js';
-import { supabase, updateSessionReport, incrementUserSessionCount } from './_shared/supabase.js';
+import { supabase, updateSessionReport, incrementUserSessionCount, saveReportData } from './_shared/supabase.js';
 import { requireAuthOrEmbed } from './_shared/auth.js';
 import { enforceAccess, trackUsage, trackTokens } from './_shared/access.js';
 import { extractGeminiTokens } from '@boriskulakhmetov-aidigital/design-system/utils';
@@ -309,6 +309,30 @@ Analyze the prompt's performance across these three test runs and produce your s
     });
 
     await updateSessionReport(jobId, finalReport, 'complete');
+
+    // Save structured report_data for visual micro-report
+    const reportData = {
+      version: '1.0',
+      iteration,
+      isRefinement,
+      wasDesigned: submission.needs_design ?? false,
+      refinementRequest: submission.refinement_request || null,
+      workingPrompt,
+      testInput,
+      testResults,
+      engineerAnalysis: accumulated,
+      engineeredPrompt,
+      summary: {
+        promptLength: workingPrompt.length,
+        engineeredPromptLength: engineeredPrompt.length,
+        testRunCount: testResults.length,
+        avgTestResultLength: Math.round(testResults.reduce((sum, r) => sum + r.length, 0) / testResults.length),
+        hasDesignPhase: submission.needs_design ?? false,
+        model: ai_model,
+      },
+    };
+    await saveReportData(jobId, reportData);
+
     if (userId && !isRefinement) await incrementUserSessionCount(userId);
     if (userId) await trackUsage(userId, 'prompt-engineering').catch(err => console.warn('trackUsage failed:', err));
     if (userId) trackTokens(userId, 'prompt-engineering', 'gemini', ai_model, totalInputTokens, totalOutputTokens, totalAllTokens);

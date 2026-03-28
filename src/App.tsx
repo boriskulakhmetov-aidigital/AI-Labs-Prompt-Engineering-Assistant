@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
-import { AppShell, ChatPanel, ReportViewer, DownloadBar, ConnectedShareBar, useJobStatus, useSessionPersistence } from '@boriskulakhmetov-aidigital/design-system';
+import { AppShell, ChatPanel, ReportViewer, DownloadBar, ConnectedShareBar, useJobStatus, useSessionPersistence, downloadVisualPDF } from '@boriskulakhmetov-aidigital/design-system';
 import type { AppShellContext, SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
 import { createClient } from '@supabase/supabase-js';
 import { SignIn, UserButton, useAuth } from '@clerk/react';
@@ -8,6 +8,8 @@ import { useOrchestrator } from './hooks/useOrchestrator';
 import { ProgressIndicator } from './components/ProgressIndicator';
 import { RefinementInput } from './components/RefinementInput';
 import { SessionSidebar } from './components/SessionSidebar';
+import { MicroReport } from './components/micro-report';
+import type { PEReportData } from './components/micro-report';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -110,6 +112,7 @@ function AppContent({
   const [engineeredPrompt, setEngineeredPrompt] = useState<string | null>(null);
   const [isRefinement, setIsRefinement]   = useState(false);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
+  const [reportData, setReportData]      = useState<PEReportData | null>(null);
 
   // ── Session persistence (DS hook) ──
   const session = useSessionPersistence(supabase, null, userId ?? null, {
@@ -128,6 +131,7 @@ function AppContent({
     setSubmission(sub);
     setJobId(sessionId);
     setPastReport(null);
+    setReportData(null);
     setPhase('pipeline_running');
     setIteration(1);
     setIsRefinement(false);
@@ -176,6 +180,7 @@ function AppContent({
     setSubmission(refinementSub);
     setJobId(newJobId);
     setPastReport(null);
+    setReportData(null);
     setPhase('pipeline_running');
     setIteration(newIteration);
     setIsRefinement(true);
@@ -217,6 +222,15 @@ function AppContent({
     if (pollResult.status === 'complete' && phase === 'pipeline_running') {
       if (pollResult.report) setPastReport(pollResult.report);
       if (pollResult.engineeredPrompt) setEngineeredPrompt(pollResult.engineeredPrompt);
+      // Fetch report_data from pe_sessions for the visual micro-report
+      if (supabase && jobId) {
+        supabase.from('pe_sessions').select('report_data').eq('id', jobId).maybeSingle()
+          .then(({ data }) => {
+            if (data?.report_data && typeof data.report_data === 'object' && (data.report_data as PEReportData).version) {
+              setReportData(data.report_data as PEReportData);
+            }
+          });
+      }
       setPhase('report_ready');
       setSidebarRefreshKey(k => k + 1);
     } else if (pollResult.status === 'error' && phase === 'pipeline_running') {
@@ -234,6 +248,7 @@ function AppContent({
     setIteration(1);
     setIsRefinement(false);
     setEngineeredPrompt(null);
+    setReportData(null);
     setPipelineError(null);
     resetOrchestrator();
     session.refreshSessions();
@@ -268,6 +283,13 @@ function AppContent({
       setIteration((fields.submission as PromptSubmission)?.iteration ?? 1);
       setIsRefinement(false);
       setEngineeredPrompt(null);
+
+      // Load structured report_data if available
+      if (fields.report_data && typeof fields.report_data === 'object' && (fields.report_data as PEReportData).version) {
+        setReportData(fields.report_data as PEReportData);
+      } else {
+        setReportData(null);
+      }
 
       if (fields.status === 'complete' && fields.report) {
         setPastReport(fields.report as string);
@@ -324,7 +346,7 @@ function AppContent({
           iteration={iteration}
         />
       )}
-      {phase === 'report_ready' && displayReport && (
+      {phase === 'report_ready' && (displayReport || reportData) && (
         <div className="report-page">
           <div className="report-bar">
             <DownloadBar
@@ -342,7 +364,11 @@ function AppContent({
               New Analysis
             </button>
           </div>
-          <ReportViewer reportText={displayReport} />
+          {reportData ? (
+            <MicroReport data={reportData} />
+          ) : (
+            <ReportViewer reportText={displayReport} />
+          )}
           <RefinementInput
             onSubmit={handleRefinement}
             iteration={iteration}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { BrandMark, ReportViewer, downloadVisualPDF } from '@boriskulakhmetov-aidigital/design-system';
 import { createClient } from '@supabase/supabase-js';
+import { MicroReport } from '../components/micro-report';
+import type { PEReportData } from '../components/micro-report';
 
 const SESSION_TABLE = 'pe_sessions';
 
@@ -14,6 +16,7 @@ export function PublicReportPage() {
   const token = window.location.pathname.replace(/^\/r\//, '').split('/')[0];
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [report, setReport] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<PEReportData | null>(null);
   const [title, setTitle] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState('');
   const autoPdfTriggered = useRef(false);
@@ -37,6 +40,10 @@ export function PublicReportPage() {
           setErrorMsg('Report not ready yet.');
           setState('error');
           return;
+        }
+        // Prefer structured report_data for visual micro-report
+        if (data.report_data && typeof data.report_data === 'object' && (data.report_data as PEReportData).version) {
+          setReportData(data.report_data as PEReportData);
         }
         setReport(data.report || '');
         setTitle(data.prompt_title ?? 'Prompt Analysis');
@@ -100,6 +107,14 @@ export function PublicReportPage() {
         <div className="status-page__icon">🔒</div>
         <h2>Report Unavailable</h2>
         <p>{errorMsg || 'This report is private or no longer available.'}</p>
+      </div>
+    );
+  }
+
+  if (reportData) {
+    return (
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
+        <MicroReport data={reportData} />
       </div>
     );
   }
