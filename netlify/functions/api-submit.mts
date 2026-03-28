@@ -106,7 +106,7 @@ export default async (req: Request) => {
   });
 
   // Immediately notify task-worker (fire-and-forget — poller is backup)
-  const siteUrl = process.env.URL || 'https://prompt-engineer.apps.aidigitallabs.com';
+  const siteUrl = process.env.URL || 'https://promptengineer.apps.aidigitallabs.com';
   fetch(`${siteUrl}/.netlify/functions/task-worker`, { method: 'POST' }).catch(() => {});
 
   // Log the API request

@@ -5,7 +5,7 @@ import type { Context } from '@netlify/functions';
 
 const APP = 'prompt-engineering';
 const TABLE = 'pe_sessions';
-const REPORT_BASE_URL = 'https://prompt-engineer.apps.aidigitallabs.com';
+const REPORT_BASE_URL = 'https://promptengineer.apps.aidigitallabs.com';
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') {

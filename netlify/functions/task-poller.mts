@@ -5,7 +5,7 @@
  */
 
 export default async (req: Request) => {
-  const siteUrl = process.env.URL || 'https://prompt-engineer.apps.aidigitallabs.com';
+  const siteUrl = process.env.URL || 'https://promptengineer.apps.aidigitallabs.com';
   let processed = 0;
   const deadline = Date.now() + 55_000;
 

@@ -21,7 +21,7 @@ export default async (req: Request) => {
   console.log(`[task-worker] Claimed ${taskType} for ${scanId}`);
 
   try {
-    const siteUrl = process.env.URL || 'https://prompt-engineer.apps.aidigitallabs.com';
+    const siteUrl = process.env.URL || 'https://promptengineer.apps.aidigitallabs.com';
 
     if (taskType === 'run_pipeline') {
       // Dispatch to background function (15-min timeout for Gemini Pro calls)

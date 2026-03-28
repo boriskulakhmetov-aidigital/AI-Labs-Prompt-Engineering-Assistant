@@ -110,7 +110,7 @@ export default async (req: Request) => {
     themeSlug = org?.theme_slug || '';
   }
 
-  const baseUrl = 'https://prompt-engineer.apps.aidigitallabs.com';
+  const baseUrl = 'https://promptengineer.apps.aidigitallabs.com';
   const reportUrl = `${baseUrl}/r/${shareToken}${themeSlug ? '?theme=' + themeSlug : ''}`;
 
   // Log the API request

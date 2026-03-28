@@ -1,6 +1,6 @@
 # Prompt Engineering Assistant
 
-> **URL:** https://prompt-engineer.apps.aidigitallabs.com
+> **URL:** https://promptengineer.apps.aidigitallabs.com
 > **Repo:** `boriskulakhmetov-aidigital/AI-Labs-Prompt-Engineering-Assistant`
 
 The Prompt Engineering Assistant helps users craft, optimize, and test AI prompts. Users paste an existing prompt or describe what they need, and the tool runs a multi-stage pipeline: prompt design, 3x testing, engineering, and reporting. Supports iterative refinement with multiple iterations.
