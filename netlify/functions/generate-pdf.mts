@@ -2,10 +2,11 @@
  * Server-side PDF generation via HTML2PDFAPI — Prompt Engineering
  */
 import type { Context } from '@netlify/functions';
+import { getAppUrl } from '@boriskulakhmetov-aidigital/design-system/utils';
 
 const APP = 'prompt-engineering';
 const TABLE = 'pe_sessions';
-const REPORT_BASE_URL = 'https://promptengineer.apps.aidigitallabs.com';
+const REPORT_BASE_URL = getAppUrl('prompt-engineering', { serverUrl: process.env.URL });
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') {

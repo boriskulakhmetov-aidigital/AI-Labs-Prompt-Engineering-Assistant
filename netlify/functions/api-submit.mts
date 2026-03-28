@@ -8,6 +8,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import { validateApiKey, logApiRequest, apiKeyErrorResponse } from '@boriskulakhmetov-aidigital/design-system/server';
+import { getAppUrl } from '@boriskulakhmetov-aidigital/design-system/utils';
 
 const APP_NAME = 'prompt-engineering';
 
@@ -106,7 +107,7 @@ export default async (req: Request) => {
   });
 
   // Immediately notify task-worker (fire-and-forget — poller is backup)
-  const siteUrl = process.env.URL || 'https://promptengineer.apps.aidigitallabs.com';
+  const siteUrl = getAppUrl('prompt-engineering', { serverUrl: process.env.URL });
   fetch(`${siteUrl}/.netlify/functions/task-worker`, { method: 'POST' }).catch(() => {});
 
   // Log the API request

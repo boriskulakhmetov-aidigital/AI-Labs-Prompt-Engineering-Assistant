@@ -3,6 +3,7 @@
  * Claims tasks and dispatches to background function (Pattern B).
  */
 import { createClient } from '@supabase/supabase-js';
+import { getAppUrl } from '@boriskulakhmetov-aidigital/design-system/utils';
 
 function getSupabase() {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -21,7 +22,7 @@ export default async (req: Request) => {
   console.log(`[task-worker] Claimed ${taskType} for ${scanId}`);
 
   try {
-    const siteUrl = process.env.URL || 'https://promptengineer.apps.aidigitallabs.com';
+    const siteUrl = getAppUrl('prompt-engineering', { serverUrl: process.env.URL });
 
     if (taskType === 'run_pipeline') {
       // Dispatch to background function (15-min timeout for Gemini Pro calls)

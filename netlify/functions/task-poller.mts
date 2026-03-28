@@ -4,8 +4,10 @@
  * This is the ONLY entry point for pipeline task execution.
  */
 
+import { getAppUrl } from '@boriskulakhmetov-aidigital/design-system/utils';
+
 export default async (req: Request) => {
-  const siteUrl = process.env.URL || 'https://promptengineer.apps.aidigitallabs.com';
+  const siteUrl = getAppUrl('prompt-engineering', { serverUrl: process.env.URL });
   let processed = 0;
   const deadline = Date.now() + 55_000;
 

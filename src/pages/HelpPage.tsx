@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
 import { HelpPage, applyTheme, resolveTheme } from '@boriskulakhmetov-aidigital/design-system';
+import { getAppUrl } from '@boriskulakhmetov-aidigital/design-system/utils';
 import '@boriskulakhmetov-aidigital/design-system/style.css';
 
 const GUIDE = `# Prompt Engineering Assistant — User Guide
 
-**Tool:** [Prompt Engineering Assistant](https://promptengineer.apps.aidigitallabs.com)
+**Tool:** [Prompt Engineering Assistant](${getAppUrl('prompt-engineering')})
 
 The Prompt Engineering Assistant helps you craft, test, and refine AI prompts. Whether you're building prompts for ChatGPT, Gemini, Claude, or any other AI tool, this assistant ensures your prompts are clear, consistent, and optimized for the best results.
 
