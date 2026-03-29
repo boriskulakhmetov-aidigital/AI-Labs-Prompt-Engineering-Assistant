@@ -61,11 +61,8 @@ export default async (req: Request) => {
     );
   }
 
-  // Get session data via meta.session_id
-  const sessionId = (job.meta as any)?.session_id;
-  if (!sessionId) {
-    return Response.json({ error: 'Session not found for job' }, { status: 404 });
-  }
+  // Get session data via meta.session_id, fallback to jobId (PE uses jobId === sessionId)
+  const sessionId = (job.meta as any)?.session_id || jobId;
 
   const { data: session } = await supabase
     .from('pe_sessions')
