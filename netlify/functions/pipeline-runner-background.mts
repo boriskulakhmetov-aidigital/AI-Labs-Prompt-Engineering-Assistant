@@ -34,6 +34,11 @@ export default async (req: Request) => {
     .select('meta').eq('id', jobId).maybeSingle();
   const baseMeta = (existingJob?.meta as Record<string, unknown>) ?? {};
 
+  // Track pipeline progress for Concierge widget display
+  let stagesDone = 0;
+  const STAGES_TOTAL = isRefinement ? 4 : (submission.needs_design ? 5 : 4);
+  // Stages: [design/revise], test-input, test-runs, engineering, complete
+
   const setStatus = async (s: PipelineJobStatus) => {
     await supabase.from('job_status').upsert({
       id: jobId,
@@ -48,6 +53,11 @@ export default async (req: Request) => {
         designedPrompt: s.designedPrompt,
         testResults: s.testResults,
         engineeredPrompt: s.engineeredPrompt,
+        // Structured progress for Concierge poll loop
+        phase: s.status,
+        current_stage: s.stage,
+        stages_done: stagesDone,
+        stages_total: STAGES_TOTAL,
       },
       updated_at: new Date().toISOString(),
       ...(s.startedAt ? { started_at: new Date(s.startedAt).toISOString() } : {}),
@@ -118,6 +128,7 @@ Revise the prompt to incorporate the requested changes.`;
       workingPrompt = revisionResult.text?.trim() ?? '';
       if (!workingPrompt) throw new Error('PromptDesign revision produced empty output');
 
+      stagesDone++;
       await setStatus({
         status: 'revising',
         stage: 'Prompt revised. Starting test runs...',
@@ -157,6 +168,7 @@ Design a complete, production-ready prompt based on this idea.`;
       workingPrompt = designResult.text?.trim() ?? '';
       if (!workingPrompt) throw new Error('PromptDesign agent produced empty output');
 
+      stagesDone++;
       await setStatus({
         status: 'designing',
         stage: 'Prompt designed. Starting test runs...',
@@ -191,6 +203,7 @@ Design a complete, production-ready prompt based on this idea.`;
     if (!testInput) throw new Error('Test input generator produced empty output');
 
     // ── Stage 2b: Prompt Tester — 3 parallel runs with same input ────
+    stagesDone++;
     await setStatus({
       status: 'testing',
       stage: 'Running prompt 3 times in parallel with test input...',
@@ -229,6 +242,7 @@ Design a complete, production-ready prompt based on this idea.`;
     });
 
     // ── Stage 3: Prompt Engineer — analyze and rewrite ────────────────────
+    stagesDone++;
     await setStatus({
       status: 'engineering',
       stage: 'Engineering improved prompt...',
