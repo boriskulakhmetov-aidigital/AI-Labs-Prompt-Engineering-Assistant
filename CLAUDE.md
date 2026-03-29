@@ -17,7 +17,7 @@ The Prompt Engineering Assistant helps users craft, optimize, and test AI prompt
 | Hosting | Netlify |
 | PDF Export | html2pdf.js |
 | Markdown | marked (via design system renderMarkdown) |
-| Design System | @boriskulakhmetov-aidigital/design-system ^7.6.1 |
+| Design System | @boriskulakhmetov-aidigital/design-system ^7.31.4 |
 
 ## Architecture
 
