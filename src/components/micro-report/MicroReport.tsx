@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { renderMarkdown } from '@boriskulakhmetov-aidigital/design-system/utils';
+import { renderMarkdown } from '@AiDigital-com/design-system/utils';
 import './MicroReport.css';
 
 export interface PEReportData {

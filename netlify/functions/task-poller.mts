@@ -4,7 +4,7 @@
  * This is the ONLY entry point for pipeline task execution.
  */
 
-import { getAppUrl } from '@boriskulakhmetov-aidigital/design-system/utils';
+import { getAppUrl } from '@AiDigital-com/design-system/utils';
 
 export default async (req: Request) => {
   const siteUrl = getAppUrl('prompt-engineering', { serverUrl: process.env.URL });

@@ -3,7 +3,7 @@
  * Claims tasks and dispatches to background function (Pattern B).
  */
 import { createClient } from '@supabase/supabase-js';
-import { getAppUrl } from '@boriskulakhmetov-aidigital/design-system/utils';
+import { getAppUrl } from '@AiDigital-com/design-system/utils';
 
 function getSupabase() {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);

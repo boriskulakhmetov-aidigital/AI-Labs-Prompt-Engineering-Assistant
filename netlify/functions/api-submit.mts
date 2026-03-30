@@ -7,8 +7,8 @@
  * Returns: { job_id, status: 'pending' }
  */
 import { createClient } from '@supabase/supabase-js';
-import { validateApiKey, logApiRequest, apiKeyErrorResponse } from '@boriskulakhmetov-aidigital/design-system/server';
-import { getAppUrl } from '@boriskulakhmetov-aidigital/design-system/utils';
+import { validateApiKey, logApiRequest, apiKeyErrorResponse } from '@AiDigital-com/design-system/server';
+import { getAppUrl } from '@AiDigital-com/design-system/utils';
 
 const APP_NAME = 'prompt-engineering';
 

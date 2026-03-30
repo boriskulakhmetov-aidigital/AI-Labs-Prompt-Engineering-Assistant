@@ -2,9 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   EmbedLayout, ChatPanel, ReportViewer, DownloadBar,
   applyTheme, resolveTheme, aiLabsTheme, useJobStatus, parseSSEStream,
-} from '@boriskulakhmetov-aidigital/design-system'
-import type { SupabaseClient } from '@boriskulakhmetov-aidigital/design-system'
-import '@boriskulakhmetov-aidigital/design-system/style.css'
+} from '@AiDigital-com/design-system'
+import type { SupabaseClient } from '@AiDigital-com/design-system'
+import '@AiDigital-com/design-system/style.css'
 import { createClient } from '@supabase/supabase-js'
 import type { PromptSubmission } from '../lib/types'
 import { ProgressIndicator } from '../components/ProgressIndicator'

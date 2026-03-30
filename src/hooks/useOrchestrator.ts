@@ -7,9 +7,9 @@
  */
 import { useState, useRef, useCallback } from 'react';
 import { useAuth } from '@clerk/react';
-import { parseSSEStream } from '@boriskulakhmetov-aidigital/design-system';
+import { parseSSEStream } from '@AiDigital-com/design-system';
 import type { ChatMessage, PromptSubmission } from '../lib/types';
-import type { UseSessionPersistenceReturn } from '@boriskulakhmetov-aidigital/design-system';
+import type { UseSessionPersistenceReturn } from '@AiDigital-com/design-system';
 
 interface OrchestratorState {
   messages: ChatMessage[];

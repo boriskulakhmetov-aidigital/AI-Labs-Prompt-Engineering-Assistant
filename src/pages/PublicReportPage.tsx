@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { BrandMark, ReportViewer, downloadVisualPDF } from '@boriskulakhmetov-aidigital/design-system';
+import { BrandMark, ReportViewer, downloadVisualPDF } from '@AiDigital-com/design-system';
 import { createClient } from '@supabase/supabase-js';
 import { MicroReport } from '../components/micro-report';
 import type { PEReportData } from '../components/micro-report';

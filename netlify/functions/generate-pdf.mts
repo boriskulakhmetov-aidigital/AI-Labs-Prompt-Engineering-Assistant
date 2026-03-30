@@ -3,7 +3,7 @@
  * Primary: PDFShift (synchronous). Fallback: HTML2PDFAPI (async polling).
  */
 import type { Context } from '@netlify/functions';
-import { getAppUrl } from '@boriskulakhmetov-aidigital/design-system/utils';
+import { getAppUrl } from '@AiDigital-com/design-system/utils';
 
 const APP = 'prompt-engineering';
 const TABLE = 'pe_sessions';

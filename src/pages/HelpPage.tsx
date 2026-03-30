@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { HelpPage, applyTheme, resolveTheme } from '@boriskulakhmetov-aidigital/design-system';
-import { getAppUrl } from '@boriskulakhmetov-aidigital/design-system/utils';
-import '@boriskulakhmetov-aidigital/design-system/style.css';
+import { HelpPage, applyTheme, resolveTheme } from '@AiDigital-com/design-system';
+import { getAppUrl } from '@AiDigital-com/design-system/utils';
+import '@AiDigital-com/design-system/style.css';
 
 const GUIDE = `# Prompt Engineering Assistant — User Guide
 

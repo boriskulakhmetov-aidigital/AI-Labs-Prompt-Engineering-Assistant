@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
+import type { SupabaseClient } from '@AiDigital-com/design-system';
 
 const SESSION_TABLE = 'pe_sessions';
 

@@ -7,7 +7,7 @@ import { TEST_INPUT_GENERATOR_PROMPT } from './_shared/testInputPrompt.js';
 import { supabase, updateSessionReport, incrementUserSessionCount, saveReportData } from './_shared/supabase.js';
 import { requireAuthOrEmbed } from './_shared/auth.js';
 import { enforceAccess, trackUsage, trackTokens } from './_shared/access.js';
-import { extractGeminiTokens } from '@boriskulakhmetov-aidigital/design-system/utils';
+import { extractGeminiTokens } from '@AiDigital-com/design-system/utils';
 import type { PipelineJobRequest, PipelineJobStatus } from './_shared/types.js';
 import { log } from './_shared/logger.js';
 

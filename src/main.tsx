@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import '@boriskulakhmetov-aidigital/design-system/style.css';
-import { applyTheme, resolveTheme } from '@boriskulakhmetov-aidigital/design-system';
+import '@AiDigital-com/design-system/style.css';
+import { applyTheme, resolveTheme } from '@AiDigital-com/design-system';
 import { ClerkProvider } from '@clerk/react';
 import App from './App';
 import { PublicReportPage } from './pages/PublicReportPage';

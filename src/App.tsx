@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
-import { AppShell, ChatPanel, ReportViewer, DownloadBar, ConnectedShareBar, useJobStatus, useSessionPersistence, downloadVisualPDF } from '@boriskulakhmetov-aidigital/design-system';
-import type { AppShellContext, SupabaseClient } from '@boriskulakhmetov-aidigital/design-system';
+import { AppShell, ChatPanel, ReportViewer, DownloadBar, ConnectedShareBar, useJobStatus, useSessionPersistence, downloadVisualPDF } from '@AiDigital-com/design-system';
+import type { AppShellContext, SupabaseClient } from '@AiDigital-com/design-system';
 import { createClient } from '@supabase/supabase-js';
 import { SignIn, UserButton, useAuth } from '@clerk/react';
 import type { AppPhase, PromptSubmission } from './lib/types';

@@ -3,7 +3,7 @@ import { ORCHESTRATOR_SYSTEM_PROMPT } from './_shared/orchestratorPrompt.js';
 import { requireAuthOrEmbed } from './_shared/auth.js';
 import { log } from './_shared/logger.js';
 import { trackTokens } from './_shared/access.js';
-import { extractGeminiTokens } from '@boriskulakhmetov-aidigital/design-system/utils';
+import { extractGeminiTokens } from '@AiDigital-com/design-system/utils';
 
 const DISPATCH_PIPELINE_TOOL = {
   name: 'dispatch_pipeline',
